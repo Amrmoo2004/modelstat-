@@ -8,15 +8,19 @@ import productcontroller from "./modules/products/products.controller.js"
 import * as dotenv from 'dotenv';
 import path from 'path';
 import cors from 'cors';
+import compression from 'compression';
 // Load .env file from root directory
 dotenv.config({  });
 
 
 const app = express();  
 app.use(cors())
-
+app.use(compression());
 const port = process.env.PORT 
 export const bootstrap =async () => {
+app.get('/', (req, res) => {
+  res.send('API is working!'); 
+});
   await connectDB();
 
     app.use(express.json());
