@@ -19,5 +19,6 @@ const categorySchema = new mongoose.Schema({
 }, { 
     timestamps: true 
 });
+categorySchema.index({ name: 1 }, { unique: false, sparse: true });
 
 export const categorymodel = mongoose.model("Category", categorySchema);
