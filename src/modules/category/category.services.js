@@ -15,13 +15,18 @@ export const createCategory = asynchandler(async (req, res) => {
     if (!name_ar || !name_en) {
         return res.status(400).json({ message: "Category name is required" });
     }
-  const existingCategory = await categorymodel.findOne({ name_en });
-        if (existingCategory) {
-            return res.status(409).json({
-                success: false,
-                error: `Category '${name_en}' already exists`
-            });
-        }
+     const existingCategory = await categorymodel.findOne({ 
+        $or: [{ name_ar }, { name_en }] 
+    });
+ 
+  if (existingCategory) {
+        const conflictField = existingCategory.name_ar === name_ar ? 'name_ar' : 'name_en';
+        return res.status(409).json({
+            success: false,
+            error: `Category with this ${conflictField} already exists`,
+            conflictingField: conflictField
+        });
+    }
     const newCategory = await categorymodel.create({
         name_ar,
         name_en,
@@ -39,8 +44,10 @@ export const createCategory = asynchandler(async (req, res) => {
       },
       201
     );
-}
-);
+
+
+});
+
 export const getAllCategories = asynchandler(async (req, res) => {
     const categories = await categorymodel.find();
     return successResponse(res, { data: categories });
