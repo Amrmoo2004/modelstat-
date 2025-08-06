@@ -35,7 +35,7 @@
     required: [true, "Arabic description is required"],
     trim: true
   },
-   category: {
+    category: {
     _id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
@@ -46,10 +46,16 @@
           return !!category;
         },
         message: 'Invalid category reference'
-      }
+      } 
     },
-    name_en: { type: String, required: true },
-    name_ar: { type: String, required: true }
+    name_en: {
+      type: String,
+      required: true
+    },
+    name_ar: {
+      type: String,
+      required: true
+    }
   },
   price: {
     type: Number,
@@ -63,16 +69,6 @@
   toObject: { virtuals: true }
 });
 
-// Add virtuals for English/Arabic category names
-productSchema.virtual('category_en').get(async function() {
-  await this.populate('category');
-  return this.category?.name_en;
-});
-
-productSchema.virtual('category_ar').get(async function() {
-  await this.populate('category');
-  return this.category?.name_ar;
-});
 
 // Update indexes (removed category_en/category_ar indexes)
 productSchema.index({ name_en: 'text', name_ar: 'text', description_en: 'text', description_ar: 'text' });
