@@ -22,7 +22,6 @@
   }],
   sizes: [{
     type: String,
-    enum: ['S', 'M', 'L', 'XL', 'XXL'],
     required: false
   }],
 
