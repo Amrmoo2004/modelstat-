@@ -104,10 +104,6 @@ export const createproduct = asynchandler(async (req, res, next) => {
         return next(new Error("Request body is missing", { cause: 400 }));
     }
 
-    if (!name_en || !name_ar || !description_en || !description_ar || !price) {
-        return next(new Error("All product details are required", { cause: 400 }));
-    }
-
     // Validate category exists
     if (!category) {
         return next(new Error("Category reference is required", { cause: 400 }));
@@ -118,17 +114,8 @@ export const createproduct = asynchandler(async (req, res, next) => {
         return next(new Error("Invalid category reference", { cause: 400 }));
     }
 
-    // Check for existing product
-    const existingProduct = await productmodel.findOne({ 
-        $or: [
-            { name_en: name_en.trim() },
-            { name_ar: name_ar.trim() }
-        ]
-    });
     
-    if (existingProduct) {  
-        return next(new Error(`Product '${name_en}' already exists`, { cause: 409 }));
-    }
+    
 
     // Process sizes
     let sizesArray = [];
@@ -179,6 +166,8 @@ export const createproduct = asynchandler(async (req, res, next) => {
         name_ar: name_ar.trim(),
         description_en: description_en.trim(),
         description_ar: description_ar.trim(),
+                name_en: name_en.trim(),
+
         category: categoryExists._id,
         price: parseFloat(price),
         sizes: sizesArray,
@@ -203,7 +192,7 @@ export const createproduct = asynchandler(async (req, res, next) => {
         {
             message: "Product created successfully",
             data: populatedProduct
-        },
+        },  
         201
     );
 });
