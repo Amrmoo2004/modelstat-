@@ -35,17 +35,21 @@
     required: [true, "Arabic description is required"],
     trim: true
   },
-  category: {  // Changed from category_en/category_ar to single reference
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Category',
-    required: [true, "Category reference is required"],
-    validate: {
-      validator: async function(categoryId) {
-        const category = await mongoose.model('Category').findById(categoryId);
-        return !!category;
-      },
-      message: 'Invalid category reference'
-    }
+   category: {
+    _id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Category',
+      required: true,
+      validate: {
+        validator: async function(id) {
+          const category = await mongoose.model('Category').findById(id);
+          return !!category;
+        },
+        message: 'Invalid category reference'
+      }
+    },
+    name_en: { type: String, required: true },
+    name_ar: { type: String, required: true }
   },
   price: {
     type: Number,
