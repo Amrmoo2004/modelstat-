@@ -3,14 +3,12 @@ import mongoose from "mongoose";
 const categorySchema = new mongoose.Schema({
    name_en: {
     type: String,
-    required: true,
-    enum: ['Electronics', 'Clothing', 'Books']
+    required: true
   },
   name_ar: {
     type: String,
-    required: true,
-    enum: ['إلكترونيات', 'ملابس', 'كتب']
-  },    
+    required: true
+  },
   
     icon: { 
         type: String,
