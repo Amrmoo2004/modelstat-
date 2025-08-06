@@ -13,6 +13,19 @@
     trim: true,
     maxlength: [100, "Arabic name cannot exceed 100 characters"]
   },
+  images: [{
+    url: { type: String, required: true },
+    public_id: { type: String, required: true },
+    width: Number,
+    height: Number,
+    filename: String
+  }],
+  sizes: [{
+    type: String,
+    enum: ['S', 'M', 'L', 'XL', 'XXL'],
+    required: false
+  }],
+
   description_en: {
     type: String,
     required: [true, "English description is required"],

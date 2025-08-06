@@ -59,40 +59,28 @@ export const uploadProductImagesbyID = asynchandler(async (req, res) => {
       filename: img.originalname || req.files[index].originalname || `product-${productId}-${Date.now()}-${index}`
     }));
 
-    // Update product with images and populate the category
-    const product = await productmodel.findByIdAndUpdate(
+    const updatedProduct = await productmodel.findByIdAndUpdate(
       productId,
-      { $push: { images: { $each: formattedImages } }},
-      { 
-        new: true,
-        runValidators: true,
-        populate: {
-          path: 'category',
-          select: 'name_en name_ar'
-        }
-      }
-    );
+      { $push: { images: { $each: formattedImages } } },
+      { new: true, runValidators: true }
+    ).populate('category');
 
-    if (!product) {
-      throw new Error('Product not found');
+    if (!updatedProduct) {
+      return next(new Error('Product not found', { cause: 404 }));
     }
 
-    res.status(200).json({
+    // Clean up temp files
+    cleanupFiles(req.files);
+
+    return res.status(200).json({
       success: true,
       message: 'Images uploaded successfully',
-      data: {
-        product: {
-          _id: product._id,
-          name_en: product.name_en,
-          name_ar: product.name_ar,
-          // Include other product fields you need
-          images: product.images // This will now include the newly uploaded images
-        },
-        uploadedImages: formattedImages // Explicitly include the uploaded images data
-      }
+      data: updatedProduct
     });
-  } finally {
-    if (req.files) cleanupFiles(req.files);
+
+  } catch (error) {
+    cleanupFiles(req.files);
+    return next(error);
   }
 });
 
