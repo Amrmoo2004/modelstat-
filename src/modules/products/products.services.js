@@ -16,7 +16,7 @@ const cleanupFiles = (files) => {
 };
 
 
-export const uploadProductImagesbyID = asynchandler(async (req, res) => {
+export const uploadProductImagesbyID = asynchandler(async (req, res,next) => {
   const { productId } = req.query; 
 
   if (!req.is('multipart/form-data')) {
@@ -35,7 +35,7 @@ export const uploadProductImagesbyID = asynchandler(async (req, res) => {
         return reject(new Error('At least one image is required'));
       }
       resolve();
-    });
+    }); 
   });
 
   try {
