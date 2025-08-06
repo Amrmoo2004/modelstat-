@@ -1,24 +1,23 @@
 import mongoose from "mongoose";
 
 const categorySchema = new mongoose.Schema({
-    name_ar: {
-        type: String,
-        required: [true, 'Category name is required'],
-        unique: true  
-    },
-    name_en: {
-        type: String,
-        required: [true, 'Category name is required'],
-        unique: true  
-    },
+   name_en: {
+    type: String,
+    required: true,
+    enum: ['Electronics', 'Clothing', 'Books']
+  },
+  name_ar: {
+    type: String,
+    required: true,
+    enum: ['إلكترونيات', 'ملابس', 'كتب']
+  },    
   
-    icon: {
+    icon: { 
         type: String,
         default: "default-icon.png" 
-    }
-}, { 
-    timestamps: true 
-});
-categorySchema.index({ name: 1 }, { unique: false, sparse: true });
+    },
+slug: { type: String, unique: true }
+}, { timestamps: true });
+
 
 export const categorymodel = mongoose.model("Category", categorySchema);

@@ -1,10 +1,11 @@
 import { categorymodel } from "../DB/model/category.js";
 import {asynchandler } from "../utilities/response/response.js";
 import { successResponse } from "../utilities/response/response.js";
+import { globalErrorHandler } from "../utilities/response/response.js";
+import { withCache } from "../utilities/cacheing/cache.util.js";
 export const createCategory = asynchandler(async (req, res) => {
      const { name_ar, name_en, icon } = req.body;
 
-    // Validate request body exists
     if (!req.body || Object.keys(req.body).length === 0) {
         return res.status(400).json({
             success: false,
@@ -12,7 +13,6 @@ export const createCategory = asynchandler(async (req, res) => {
         });
     }
 
-    // Validate required fields
     const missingFields = [];
     if (!name_ar) missingFields.push('name_ar');
     if (!name_en) missingFields.push('name_en');
@@ -25,22 +25,7 @@ export const createCategory = asynchandler(async (req, res) => {
         });
     }
 
-    // Validate field lengths and patterns
-    if (name_ar.length < 2 || name_ar.length > 50) {
-        return res.status(400).json({
-            success: false,
-            error: "Arabic name must be between 2-50 characters"
-        });
-    }
 
-    if (name_en.length < 2 || name_en.length > 50) {
-        return res.status(400).json({
-            success: false,
-            error: "English name must be between 2-50 characters"
-        });
-    }
-
-        // Check for existing category (both names)
         const existingCategory = await categorymodel.findOne({ 
             $or: [{ name_ar }, { name_en }] 
         });
@@ -55,11 +40,10 @@ export const createCategory = asynchandler(async (req, res) => {
             });
         }
 
-        // Create new category
         const newCategory = await categorymodel.create({
             name_ar,
             name_en,
-            icon: icon || undefined // Only include icon if provided
+            icon: icon || undefined 
         });
 
         return successResponse(
@@ -77,6 +61,29 @@ export const getAllCategories = asynchandler(async (req, res) => {
     const categories = await categorymodel.find();
     return successResponse(res, { data: categories });
 });
+export const findCategoryByNameHandler = asynchandler(async (req, res,next) => {
+  try {
+    const { name } = req.params;
+    
+    if (!name) {
+      return next (new Error("Category name is required", { cause: 400 }));
+    }
+
+    const category = await categorymodel.findOne({
+      $or: [{ name_ar: name }, { name_en: name }]
+    });
+    
+    
+    if (!category) {
+      return next(new Error(`Category with name '${name}' not found`, { cause: 404 }));
+    }
+    
+    return successResponse(res, { data: category });
+  } catch (error) {
+  return next(error);
+  }
+});
+
 export const getCategoryById = asynchandler(async (req, res) => {
     const { id } = req.params;
     const category = await categorymodel.findById(id);

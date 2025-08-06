@@ -1,26 +1,68 @@
-import mongoose from "mongoose";
-const schema = mongoose.Schema;
-const productSchema = new mongoose.Schema({
-  name_en: { type: String, required: true },
-  name_ar: { type: String, required: true },
-  description_en: { type: String, required: true },
-  description_ar: { type: String, required: true },
-  category_en: { 
-    type: String, 
-    required: true,
-    enum: ['Electronics', 'Clothing', 'Books']
+  import mongoose from "mongoose";
+  const schema = mongoose.Schema;
+  const productSchema = new mongoose.Schema({
+  name_en: {
+    type: String,
+    required: [true, "English name is required"],
+    trim: true,
+    maxlength: [100, "English name cannot exceed 100 characters"]
   },
-  category_ar: { 
-    type: String, 
-    required: true,
-    enum: ['إلكترونيات', 'ملابس', 'كتب']
+  name_ar: {
+    type: String,
+    required: [true, "Arabic name is required"],
+    trim: true,
+    maxlength: [100, "Arabic name cannot exceed 100 characters"]
   },
-  price: { type: Number, required: true },
-  sizes: [String],
-  images: [{
-    public_id: String,
-    url: String
-  }]
-}, { timestamps: true });
+  description_en: {
+    type: String,
+    required: [true, "English description is required"],
+    trim: true
+  },
+  description_ar: {  // Fixed - changed from ObjectId to String
+    type: String,
+    required: [true, "Arabic description is required"],
+    trim: true
+  },
+  category: {  // Changed from category_en/category_ar to single reference
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: [true, "Category reference is required"],
+    validate: {
+      validator: async function(categoryId) {
+        const category = await mongoose.model('Category').findById(categoryId);
+        return !!category;
+      },
+      message: 'Invalid category reference'
+    }
+  },
+  price: {
+    type: Number,
+    required: [true, "Price is required"],
+    min: [0, "Price must be positive"]
+  },
+  // ... rest of your schema remains the same ...
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-export const productmodel = mongoose.model("product", productSchema);
+// Add virtuals for English/Arabic category names
+productSchema.virtual('category_en').get(async function() {
+  await this.populate('category');
+  return this.category?.name_en;
+});
+
+productSchema.virtual('category_ar').get(async function() {
+  await this.populate('category');
+  return this.category?.name_ar;
+});
+
+// Update indexes (removed category_en/category_ar indexes)
+productSchema.index({ name_en: 'text', name_ar: 'text', description_en: 'text', description_ar: 'text' });
+productSchema.index({ category: 1 });
+productSchema.index({ price: 1 });
+productSchema.index({ isFeatured: 1 });
+productSchema.index({ isActive: 1 });
+
+export const productmodel = mongoose.model("Product", productSchema);

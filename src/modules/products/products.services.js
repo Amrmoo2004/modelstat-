@@ -1,42 +1,177 @@
 import { productmodel } from "../DB/model/product.js";
+import { categorymodel } from "../DB/model/category.js";
 import {asynchandler } from "../utilities/response/response.js";
 import {successResponse } from "../utilities/response/response.js";
-export const createproduct = asynchandler (async (req, res,next) => {
-const {     name_ar, name_en,
-    description_ar, description_en,
-    category_ar, category_en,
-    price, comments, rateing, sizes, images  } = req.body;
-    if (!req.body) {
-        return  next(new Error("Request body is missing", { cause: 400 }));
-    }
-    
-    const existingProduct = await productmodel.findOne ({ name: { en: name_en, ar: name_ar } });
-    if (existingProduct) {  
-        return next(new Error(`Product '${name_en}' already exists`, { cause: 409 }));
-    }   
-     const newProduct = await productmodel.create({
-    name_en,
-    name_ar,
-    description_en,
-    description_ar,
-    category_en,
-    category_ar,
+import { ImageUploader } from '../multer/locaal.multer.js';
+import { uploadToCloudinary} from '../utilities/cloudinary/cloudinary.js';
+import fs from 'fs';
 
-    price,
-    sizes,
-    images
+
+  // Helper function to clean up files
+const cleanupFiles = (files) => {
+  if (!files) return;
+  files.forEach(file => {
+    if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+  });
+};
+
+
+export const uploadProductImagesbyID = asynchandler(async (req, res) => {
+  const { productId } = req.query; 
+
+  if (!req.is('multipart/form-data')) {
+    throw new Error('Content-Type must be multipart/form-data');
+  }
+
+  const uploadMiddleware = ImageUploader.array('images', 20);
+  
+  await new Promise((resolve, reject) => {
+    uploadMiddleware(req, res, (err) => {
+      if (err) {
+        if (req.files) cleanupFiles(req.files);
+        return reject(new Error(`File upload failed: ${err.message}`));
+      }
+      if (!req.files?.length) {
+        return reject(new Error('At least one image is required'));
+      }
+      resolve();
+    });
   });
 
-    await newProduct.save();
+  try {
+    // Upload to Cloudinary - ensure your uploadToCloudinary preserves originalname
+    const uploadedImages = await uploadToCloudinary(req.files, {
+      
+      folder: `uploads/product_Images/${productId}`,
+      transformations: {
+        width: 1200,
+        height: 1200,
+        crop: 'limit',
+        quality: 'auto'
+      }
+    });
+
+    // Format images with proper filename
+    const formattedImages = uploadedImages.map((img, index) => ({
+      url: img.url,
+      public_id: img.publicId,
+      width: img.width,
+      height: img.height,
+      filename: img.originalname || req.files[index].originalname || `product-${productId}-${Date.now()}-${index}`
+    }));
+
+    const product = await productmodel.findByIdAndUpdate(
+      productId,
+      { $push: { images: { $each: formattedImages } } },
+      { new: true, runValidators: true }
+    );
+
+    if (!product) {
+      throw new Error('Product not found');
+    }
+
+    res.status(200).json({
+      success: true,
+      data: product
+    });
+  } finally {
+    if (req.files) cleanupFiles(req.files);
+  }
+});
+
+
+
+export const createproduct = asynchandler(async (req, res, next) => {
+    const { 
+        name_ar, 
+        name_en,
+        description_ar, 
+        description_en,
+        category,  // This should be the Category _id
+        price, 
+        comments, 
+        rating, 
+        sizes
+    } = req.body;
+
+    // Validate required fields
+    if (!req.body) {
+        return next(new Error("Request body is missing", { cause: 400 }));
+    }
+
+    // Validate required product fields
+    if (!name_en || !name_ar || !description_en || !description_ar || !price) {
+        return next(new Error("All product details are required", { cause: 400 }));
+    }
+
+    // Validate category exists
+    if (!category) {
+        return next(new Error("Category reference is required", { cause: 400 }));
+    }
+
+    const categoryExists = await categorymodel.findById(category);
+    if (!categoryExists) {
+        return next(new Error("Invalid category reference", { cause: 400 }));
+    }
+
+    // Check for existing product
+    const existingProduct = await productmodel.findOne({ 
+        $or: [
+            { name_en: name_en.trim() },
+            { name_ar: name_ar.trim() }
+        ]
+    });
+    
+    if (existingProduct) {  
+        return next(new Error(`Product '${name_en}' already exists`, { cause: 409 }));
+    }
+
+    // Process sizes
+    let sizesArray = [];
+    if (sizes) {
+        try {
+            sizesArray = Array.isArray(sizes) ? sizes : JSON.parse(sizes);
+        } catch (e) {
+            return next(new Error("Invalid sizes format. Please send as array or JSON string", { cause: 400 }));
+        }
+    }
+
+    // Create the product with category reference
+    const newProduct = await productmodel.create({
+        name_en: name_en.trim(),
+        name_ar: name_ar.trim(),
+        description_en: description_en.trim(),
+        description_ar: description_ar.trim(),
+        category: categoryExists._id,  // Store only the reference
+        price: parseFloat(price),
+        sizes: sizesArray,
+        comments: comments || [],
+        rating: rating || 0
+    });
+
+    // Populate category details in the response
+    const populatedProduct = await productmodel.findById(newProduct._id)
+        .populate('category', 'name_en name_ar');
+
     return successResponse(
         res,
         {
             message: "Product created successfully",
-            data: newProduct
+            data: populatedProduct
         },
         201
     );
 });
+export const uploadproductsimage = asynchandler(async (req, res, next) => {
+return successResponse(
+    res,
+    {
+        message: "Images uploaded successfully",
+        data: {file:req.file}
+    },
+    200
+);
+})
 
 
 export const getAllProducts = asynchandler(async (req, res, next) => {
@@ -86,7 +221,7 @@ export const updateProduct = asynchandler(async (req, res, next) => {
     'name_en', 'name_ar',
     'description_en', 'description_ar',
     'category_en', 'category_ar',
-    'price', 'sizes', 'images'
+    'price', 'sizes'
   ];
 
   const updates = {};
@@ -140,25 +275,3 @@ export const deleteProduct = asynchandler(async (req, res, next) => {
         200
     );
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
