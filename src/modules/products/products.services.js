@@ -39,19 +39,18 @@ export const uploadProductImagesbyID = asynchandler(async (req, res) => {
   });
 
   try {
-    // Upload to Cloudinary - ensure your uploadToCloudinary preserves originalname
+    // Upload to Cloudinary
     const uploadedImages = await uploadToCloudinary(req.files, {
-      
-      folder: `uploads/product_Images/${productId}`,
+      folder: `uploads/product_images/${productId}`, // Changed to Cloudinary-friendly format
       transformations: {
         width: 1200,
         height: 1200,
-        crop: 'limit',
+        crop: 'limit', 
         quality: 'auto'
       }
     });
 
-    // Format images with proper filename
+    // Format images data
     const formattedImages = uploadedImages.map((img, index) => ({
       url: img.url,
       public_id: img.publicId,
@@ -60,10 +59,18 @@ export const uploadProductImagesbyID = asynchandler(async (req, res) => {
       filename: img.originalname || req.files[index].originalname || `product-${productId}-${Date.now()}-${index}`
     }));
 
+    // Update product with images and populate the category
     const product = await productmodel.findByIdAndUpdate(
       productId,
-      { $push: { images: { $each: formattedImages } } },
-      { new: true, runValidators: true }
+      { $push: { images: { $each: formattedImages } }},
+      { 
+        new: true,
+        runValidators: true,
+        populate: {
+          path: 'category',
+          select: 'name_en name_ar'
+        }
+      }
     );
 
     if (!product) {
@@ -72,7 +79,17 @@ export const uploadProductImagesbyID = asynchandler(async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: product
+      message: 'Images uploaded successfully',
+      data: {
+        product: {
+          _id: product._id,
+          name_en: product.name_en,
+          name_ar: product.name_ar,
+          // Include other product fields you need
+          images: product.images // This will now include the newly uploaded images
+        },
+        uploadedImages: formattedImages // Explicitly include the uploaded images data
+      }
     });
   } finally {
     if (req.files) cleanupFiles(req.files);
@@ -82,12 +99,12 @@ export const uploadProductImagesbyID = asynchandler(async (req, res) => {
 
 
 export const createproduct = asynchandler(async (req, res, next) => {
-    const { 
+     const { 
         name_ar, 
         name_en,
         description_ar, 
         description_en,
-        category,  // This should be the Category _id
+        category,
         price, 
         comments, 
         rating, 
@@ -99,7 +116,6 @@ export const createproduct = asynchandler(async (req, res, next) => {
         return next(new Error("Request body is missing", { cause: 400 }));
     }
 
-    // Validate required product fields
     if (!name_en || !name_ar || !description_en || !description_ar || !price) {
         return next(new Error("All product details are required", { cause: 400 }));
     }
@@ -132,22 +148,63 @@ export const createproduct = asynchandler(async (req, res, next) => {
         try {
             sizesArray = Array.isArray(sizes) ? sizes : JSON.parse(sizes);
         } catch (e) {
-            return next(new Error("Invalid sizes format. Please send as array or JSON string", { cause: 400 }));
+            return next(new Error("Invalid sizes format", { cause: 400 }));
         }
     }
 
-    // Create the product with category reference
+    // Process images if they exist in the request
+    let uploadedImages = [];
+    if (req.files && req.files.length > 0) {
+        try {
+            uploadedImages = await uploadToCloudinary(req.files, {
+                folder: `./uploads/product_Images/${productId}`,
+                transformations: {
+                    width: 1200,
+                    height: 1200,
+                    crop: 'limit',
+                    quality: 'auto'
+                }
+            });
+
+            // Format images for database
+            uploadedImages = uploadedImages.map(img => ({
+                url: img.url,
+                public_id: img.publicId,
+                width: img.width,
+                height: img.height,
+                filename: img.originalname || `product-${Date.now()}`
+            }));
+        } catch (error) {
+            // Clean up any uploaded files on error
+            if (req.files) {
+                req.files.forEach(file => {
+                    if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+                });
+            }
+            return next(new Error(`Image upload failed: ${error.message}`, { cause: 500 }));
+        }
+    }
+
+    // Create the product
     const newProduct = await productmodel.create({
         name_en: name_en.trim(),
         name_ar: name_ar.trim(),
         description_en: description_en.trim(),
         description_ar: description_ar.trim(),
-        category: categoryExists._id,  // Store only the reference
+        category: categoryExists._id,
         price: parseFloat(price),
         sizes: sizesArray,
+        images: uploadedImages, // Add the uploaded images
         comments: comments || [],
         rating: rating || 0
     });
+
+    // Clean up temp files after successful upload
+    if (req.files) {
+        req.files.forEach(file => {
+            if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+        });
+    }
 
     // Populate category details in the response
     const populatedProduct = await productmodel.findById(newProduct._id)
@@ -162,16 +219,6 @@ export const createproduct = asynchandler(async (req, res, next) => {
         201
     );
 });
-export const uploadproductsimage = asynchandler(async (req, res, next) => {
-return successResponse(
-    res,
-    {
-        message: "Images uploaded successfully",
-        data: {file:req.file}
-    },
-    200
-);
-})
 
 
 export const getAllProducts = asynchandler(async (req, res, next) => {
