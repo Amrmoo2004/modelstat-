@@ -168,7 +168,11 @@ export const createproduct = asynchandler(async (req, res, next) => {
         description_ar: description_ar.trim(),
                 name_en: name_en.trim(),
 
-        category: categoryExists._id,
+        category: {  // Store both ID and names
+            _id: categoryExists._id,
+            name_en: categoryExists.name_en,
+            name_ar: categoryExists.name_ar
+        },
         price: parseFloat(price),
         sizes: sizesArray,
         images: uploadedImages, // Add the uploaded images
