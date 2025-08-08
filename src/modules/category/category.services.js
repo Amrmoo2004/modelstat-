@@ -6,7 +6,7 @@ import { withCache } from "../utilities/cacheing/cache.util.js";
 export const createCategory = asynchandler(async (req, res) => {
     
      const { name_ar, name_en, icon } = req.body;
-
+    
     if (!req.body || Object.keys(req.body).length === 0) {
         return res.status(400).json({
             success: false,

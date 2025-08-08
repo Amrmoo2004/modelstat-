@@ -1,32 +1,20 @@
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+export const filevalidation = {
+  Image: ['image/jpeg', 'image/png'],
+  document: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+};
 
-export const ImageUploader = multer({
-   storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      const productId = req.params.id || req.query.productId;
-      
-  const productFolder = path.join(`./uploads/product_Images/${productId}`);
+export const cloudfileuploader = ({ validation = [] } = {}) => {
+  const storage = multer.diskStorage({});
   
-      if (!fs.existsSync(productFolder)) {
-        fs.mkdirSync(productFolder, { recursive: true });
-      }
-      
-      cb(null, productFolder);
-    },
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname);
-      cb(null, `img-${Date.now()}${ext}`);
+  function filefilter(req, file, cb) {
+    if (validation.includes(file.mimetype)) {
+      return cb(null, true);
     }
-  }), 
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    cb(null, allowedTypes.includes(file.mimetype));
-  },
-  limits: { fileSize: 15 * 1024 * 1024 } 
-}); 
+    return cb(new Error("invalid file type"), false);
+  }
+
+  const upload = multer({ storage, fileFilter: filefilter });
+  return upload;
+};

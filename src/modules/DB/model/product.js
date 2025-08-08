@@ -14,16 +14,32 @@
     maxlength: [100, "Arabic name cannot exceed 100 characters"]
   },
   images: [{
-    url: { type: String, required: true },
-    public_id: { type: String, required: true },
-    width: Number,
-    height: Number,
-    filename: String
+    secure_url: {
+      type: String,
+      required: true
+    },
+    url: {
+      type: String,
+      required: true
+    },
+    public_id: {
+      type: String,
+      required: true
+    },
+    asset_id: {
+      type: String
+    }
   }],
   sizes: [{
     type: String,
     required: false
   }],
+ 
+  sizes: [{
+    type: String,
+    required: false
+  }],
+
 
   description_en: {
     type: String,
@@ -46,22 +62,21 @@
           return !!category;
         },
         message: 'Invalid category reference'
-      } 
+      }
     },
-    name_en: {
-      type: String,
-      required: true
-    },
-    name_ar: {
-      type: String,
-      required: true
-    }
+    name_en: { type: String, required: true },
+    name_ar: { type: String, required: true }
   },
   price: {
     type: Number,
     required: [true, "Price is required"],
     min: [0, "Price must be positive"]
   },
+  rating: {
+    type: Number,
+    default: 0
+  },
+
   // ... rest of your schema remains the same ...
 }, {
   timestamps: true,
