@@ -12,7 +12,7 @@ cloudinary.config({
 export const uploadFile = async (file, path = "general") => {
   try {
     const result = await cloudinary.uploader.upload(file.path, {
-      folder: `${process.env.APPLICATION_NAME}/${path}`
+      folder: `${process.env.application_name}/${path}`
     });
   return {
       secure_url: result.secure_url,

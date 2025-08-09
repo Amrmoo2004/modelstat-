@@ -5,10 +5,15 @@ import  authcontroller from './modules/auth/auth.controller.js';
 import categorycontroller from './modules/category/category.controller.js';
 import usercontroller from './modules/user/user.controller.js';
 import productcontroller from "./modules/products/products.controller.js"
+import cartcontroller from './modules/cart/cart.controller.js'
 import * as dotenv from 'dotenv';
 import path from 'path';
 import cors from 'cors';
 import compression from 'compression';
+import MongoStore from 'connect-mongo';
+import session from 'express-session';  
+import cookieParser from 'cookie-parser';
+
 
 
 
@@ -17,7 +22,27 @@ dotenv.config({  });
 
 
 const app = express();  
-app.use
+// Enable CORS properly
+const corsOptions ={
+  origin: true, // or your specific frontend origin
+  credentials: true,
+  exposedHeaders: ['set-cookie']
+}
+app.use(cors(corsOptions));
+app.use(cookieParser());
+
+app.use(session({
+  store: MongoStore.create({ mongoUrl: process.env.URL_DATABASE }),
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 14 * 24 * 60 * 60 * 1000 // 14 days
+  }
+}));
 app.use(cors())
 app.use(compression());
 const port = process.env.PORT 
@@ -28,21 +53,22 @@ app.get('/', (req, res) => {
   await connectDB();
 
     app.use(express.json());
+    app.use((req, res, next) => {
+  req.socket.on('error', (err) => {
+    console.error('Request socket error:', err);
+  });
+  next();
+});
 app.use("/uploads", express.static(path.join(process.cwd(), "uploads")))
     app.use('/categories', categorycontroller);
     app.use('/products', productcontroller);
 
   app.use('/auth', authcontroller);
    app.use('/user', usercontroller);
+   app.use('/cart',cartcontroller  );
 
    app.use (globalErrorHandler);
-// app.use(asynchandler)
-app.use('/upload', (req, res) => {
-  res.json({
-    success: true,
-    files: req.uploadResults
-  });
-});
+
   return app.listen(port, () => {
     console.log(`🚀 Server is running at http://localhost:${port}`);
   });
