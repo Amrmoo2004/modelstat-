@@ -114,9 +114,15 @@ export const login = asynchandler(async (req, res, next) => {
   }
 
   await mergeCarts(user._id, req.sessionID);
-  const tokenType = user.role === roleEnum.ADMIN ? 'System' : 'Bearer';
-  const credentials = login_Credentials(user, res, tokenType);
-  
+const tokenType = user.role === roleEnum.ADMIN ? 'System' : 'User';
+console.log('Generating token for:', {
+  userId: user._id,
+  role: user.role,
+  tokenType
+});
+
+const credentials = login_Credentials(user, res, tokenType);
+
   return successResponse(res, {
     ...credentials,
     message: "Login successful"
@@ -174,7 +180,7 @@ export const loginWithGmail = asynchandler(async (req, res, next) => {
   
   // Pass the value correctly
   const payload = await verifygoogleaccount(idtoken); // Passing the value from request body
-  const { picture, name, email, email_verified } = payload;
+  const { picture, name, email, isVerified: email_verified } = payload;
 
   if (!email_verified) {
     return next(new Error("Email not verified", { cause: 400 }));

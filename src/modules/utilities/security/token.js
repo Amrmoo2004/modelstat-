@@ -1,17 +1,23 @@
+// token.js
 import jwt from "jsonwebtoken";
 import * as dotenv from 'dotenv';
-import { asynchandler } from "../response/response.js";
-dotenv.config({  });
 
+dotenv.config();
 
-export const generate_token = (payload = {}, secretKey = process.env.GET_seckey, options = { expiresIn: "1h" }) => {
-    if (!payload || !secretKey) {
-throw new Error("Both payload and secret key are required for token generation") 
+export const generate_token = (payload = {}, secretKey, options = { expiresIn: "30m" }) => {
+    if (!secretKey) {
+        console.error('Token generation error: Missing secret key');
+        throw new Error('Secret key is required for token generation');
     }
+    console.log(`Generating token with secret: ${secretKey.substring(0, 5)}...`);
     return jwt.sign(payload, secretKey, options);
 };
 
-export const verify_token =asynchandler( (token,  secretkey=process.env.verify_seckey) => {
-   
-    return jwt.verify(token, secretkey);
-});
+export const verify_token = (token, secretKey) => {
+    if (!secretKey) {
+        console.error('Token verification error: Missing secret key');
+        throw new Error('Secret key is required for token verification');
+    }
+    console.log(`Verifying token with secret: ${secretKey.substring(0, 5)}...`);
+    return jwt.verify(token, secretKey);
+};

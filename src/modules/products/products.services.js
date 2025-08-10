@@ -14,7 +14,8 @@ export const createproduct = asynchandler(async (req, res, next) => {
     description_en,
     category,
     price, 
-    sizes
+    sizes,
+    colour
   } = req.body;
 
   // Validate required fields
@@ -54,7 +55,8 @@ category: {
         images: [], 
     cover: [],
     comments: [],
-    rating: 0
+    rating: 0,
+    colour: colour.trim()
   });
   
   // Upload images
