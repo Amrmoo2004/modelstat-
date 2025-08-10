@@ -9,6 +9,7 @@ import { generate_token } from "../utilities/security/token.js";
 import { OAuth2Client } from 'google-auth-library';
 import { login_Credentials } from "../utilities/login_Creadtinals/login.creadtnials.js";
 import { mergeCarts } from "../utilities/cart/cartUtils.js";
+import { emailevnt } from "../utilities/events/email.events.js";
 
 const providerEnum = {
   google: "google",
@@ -21,66 +22,105 @@ export const roleEnum = {
 } 
 
 export const signup = asynchandler(async (req, res, next) => {
-  const { username, email, password ,phone  } = req.body;
+  const { username, email, password, phone } = req.body;
   
-  if (!username || !email || !password||!phone) {
+  
+  if (!username || !email || !password || !phone) {
     return next(new Error("All fields are required", { cause: 400 }));
   }
 
-  const existinguser = await UserModel.findOne({ email });
-  if (existinguser) {
-    return next(new Error("User already exists", { cause: 409 }));
+  const existingUser = await UserModel.findOne({ email });
+  
+  if (existingUser) {
+    if (existingUser.isVerified) {
+      return next(new Error("Account already verified and exists", { cause: 409 }));
+    }
+    await UserModel.deleteOne({ _id: existingUser._id });
   }
 
-  const hashpassword = await generatehash({ plaintext: password, hash: 10 });
-const encryptphone = await encrypt(password , process.env.encryption_key);
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const user = await UserModel.create({
     username,
     email,
-    password: hashpassword
-    , phone: encryptphone
+    password: await generatehash({ plaintext: password, saltround: process.env.SALTROUNDS }),
+    phone: await encrypt(phone, process.env.encryption_key),
+    otp,
+    otpExpires: new Date(Date.now() + 15 * 60 * 1000)
   });
-await mergeCarts(user._id, req.sessionID); // Use 'user' instead of 'newUser'
+
+  emailevnt.emit("confirmemail", {
+    to: email,
+    subject: "Verify Your Email",
+    otp,
+    username
+  });
+
+  await mergeCarts(user._id, req.sessionID);
 
   return successResponse(res, {
-    id: user._id,
-    username: user.username,
-    email: user.email
+    message: "Verification OTP sent to your email",
+    userId: user._id
   }, 201);
 });
 
 export const login = asynchandler(async (req, res, next) => {
   const { email, password } = req.body;
+  const MAX_LOGIN_ATTEMPTS = 5;
+  const LOCK_TIME = 15 * 60 * 1000; // 15 minutes in milliseconds
 
-  // Validate input
   if (!email || !password) {
     return next(new Error("Email and password are required", { cause: 400 }));
   }
 
-  // Find user with password field explicitly included
   const user = await UserModel.findOne({ 
     email,
     provider: providerEnum.local 
-  }).select('+password');
+  }).select('+password +loginAttempts +lockUntil');
+
+  if (user?.lockUntil && user.lockUntil > Date.now()) {
+    const remainingTime = Math.ceil((user.lockUntil - Date.now()) / 60000);
+    return next(new Error(`Account temporarily locked. Try again in ${remainingTime} minutes`, { cause: 423 }));
+  }
 
   // Authentication checks
   if (!user) return next(new Error("Invalid credentials", { cause: 401 }));
   if (!user.password) return next(new Error("Account not properly configured", { cause: 401 }));
-  
-  // Password verification
-  const isPasswordValid = await comparehash(password, user.password);
-  if (!isPasswordValid) return next(new Error("Invalid credentials", { cause: 401 }));
 
-  // Post-authentication flow
+  const isPasswordValid = await comparehash(password, user.password);
+  
+  if (!isPasswordValid) {
+    const updates = {
+      $inc: { loginAttempts: 1 },
+      ...(user.loginAttempts + 1 >= MAX_LOGIN_ATTEMPTS && {
+        lockUntil: new Date(Date.now() + LOCK_TIME)
+      })
+    };
+
+    await UserModel.findByIdAndUpdate(user._id, updates);
+
+    const attemptsLeft = MAX_LOGIN_ATTEMPTS - (user.loginAttempts + 1);
+    const message = attemptsLeft > 0 
+      ? `Invalid credentials. ${attemptsLeft} attempts remaining`
+      : `Account locked for 15 minutes`;
+
+    return next(new Error(message, { cause: 401 }));
+  }
+
+  if (user.loginAttempts > 0 || user.lockUntil) {
+    await UserModel.findByIdAndUpdate(user._id, {
+      loginAttempts: 0,
+      lockUntil: null
+    });
+  }
+
   await mergeCarts(user._id, req.sessionID);
   const tokenType = user.role === roleEnum.ADMIN ? 'System' : 'Bearer';
-
-  // In your auth.services.js login function:
-const credentials = login_Credentials(user, res);
-return successResponse(res, {
-  ...credentials,
-  message: "Login successful"
-});
+  const credentials = login_Credentials(user, res, tokenType);
+  
+  return successResponse(res, {
+    ...credentials,
+    message: "Login successful"
+  });
 });
 
 
@@ -151,46 +191,64 @@ export const loginWithGmail = asynchandler(async (req, res, next) => {
     });
   }
 
-  // Corrected token type determination
-  const tokenType = user.role === 'admin' ? 'System' : 'Bearer';
+    const credentials = login_Credentials(user, res, tokenType);
 
-  const accessTokenSecret = tokenType === 'System' 
-    ? process.env.ACCESS_SYSTEM_TOKEN_SECRET
-    : process.env.ACCESS_USER_TOKEN_SECRET;
-  
-  const refreshTokenSecret = tokenType === 'System'
-    ? process.env.REFRESH_SYSTEM_TOKEN_SECRET
-    : process.env.REFRESH_USER_TOKEN_SECRET;
-
-  const tokenPayload = { 
-    id: user._id.toString(), // Ensure consistent ID format
-    role: user.role,
-    // Add other necessary claims
-  };
-
-  const access_token = generate_token(
-    tokenPayload, 
-    accessTokenSecret, 
-    { }
-  );
-
-  const refresh_token = generate_token(
-    tokenPayload,
-    refreshTokenSecret,
-    { expiresIn: '7d' }
-  );
-
-  // Set secure HTTP-only cookies
-  res.cookie('refresh_token', refresh_token, { 
-    httpOnly: true, 
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
-  });
-await mergeCarts(user._id, req.sessionID); // Use 'user' instead of 'newUser'
+await mergeCarts(user._id, req.sessionID); 
   return successResponse(res, {
-    access_token,
-    refresh_token,
-    token_type: tokenType, // Send back the token type
+   credentials,
     message: "Login successful",
    
+  });
+});
+export const verifyEmail = asynchandler(async (req, res, next) => {
+  const { email, otp } = req.body;
+  
+  const user = await UserModel.findOne({ 
+    email,
+    otpExpires: { $gt: Date.now() }
+  });
+
+  if (!user) return next(new Error("Invalid OTP or expired", { cause: 400 }));
+  if (user.otp !== otp) return next(new Error("Invalid OTP", { cause: 400 }));
+  if (user.isVerified) return next(new Error("Account already verified", { cause: 400 }));
+
+  // Mark as verified
+  user.isVerified = true;
+  user.verifiedAt = new Date();
+  user.otp = undefined;
+  user.otpExpires = undefined;
+  await user.save();
+
+  return successResponse(res, {
+    message: "Email verified successfully!"
+  });
+});
+export const resendOtp = asynchandler(async (req, res, next) => {
+  const { email } = req.body;
+  
+  const user = await UserModel.findOne({ email });
+  if (!user) {
+    return next(new Error("User not found", { cause: 404 }));
+  }
+
+  // Check if already verified
+  if (user.isVerified) {
+    return next(new Error("Account already verified", { cause: 400 }));
+  }
+
+  const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
+  user.otp = newOtp;
+  user.otpExpires = new Date(Date.now() + 15 * 60 * 1000);
+  await user.save();
+
+  emailevnt.emit("confirmemail", {
+    to: email,
+    subject: "New Verification Code",
+    otp: newOtp,
+    username: user.username
+  });
+
+  return successResponse(res, {
+    message: "New verification code sent"
   });
 });
