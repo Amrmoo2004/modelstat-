@@ -28,19 +28,15 @@ export const uploadFile = async (file, path = "general") => {
 };
 
 export const uploadFiles = async (files = [], path = "general") => {
-  const results = [];
-  for (const file of files) {
-    try {
-      const result = await uploadFile(file, path);
-      results.push(result);
-    } catch (error) {
+  const uploadPromises = files.map(file => 
+    uploadFile(file, path).catch(error => {
       console.error(`Failed to upload ${file.originalname}:`, error);
-      // Continue with other files even if one fails
-    }
-  }
-  return results;
+      return null; // Skip failed files
+    })
+  );
+  const results = await Promise.all(uploadPromises);
+  return results.filter(Boolean); // Remove nulls (failed uploads)
 };
-
 export const destroyFile = async (public_id) => {
   return await cloudinary.uploader.destroy(public_id);
 };

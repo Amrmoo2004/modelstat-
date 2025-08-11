@@ -65,8 +65,7 @@ export const signup = asynchandler(async (req, res, next) => {
 
 export const login = asynchandler(async (req, res, next) => {
   const { email, password } = req.body;
-  const MAX_LOGIN_ATTEMPTS = 5;
-  const LOCK_TIME = 15 * 60 * 1000; // 15 minutes in milliseconds
+ 
 
   if (!email || !password) {
     return next(new Error("Email and password are required", { cause: 400 }));
@@ -75,51 +74,17 @@ export const login = asynchandler(async (req, res, next) => {
   const user = await UserModel.findOne({ 
     email,
     provider: providerEnum.local 
-  }).select('+password +loginAttempts +lockUntil');
+  }).select('+password ');
 
-  if (user?.lockUntil && user.lockUntil > Date.now()) {
-    const remainingTime = Math.ceil((user.lockUntil - Date.now()) / 60000);
-    return next(new Error(`Account temporarily locked. Try again in ${remainingTime} minutes`, { cause: 423 }));
-  }
+  
 
   // Authentication checks
   if (!user) return next(new Error("Invalid credentials", { cause: 401 }));
   if (!user.password) return next(new Error("Account not properly configured", { cause: 401 }));
 
-  const isPasswordValid = await comparehash(password, user.password);
-  
-  if (!isPasswordValid) {
-    const updates = {
-      $inc: { loginAttempts: 1 },
-      ...(user.loginAttempts + 1 >= MAX_LOGIN_ATTEMPTS && {
-        lockUntil: new Date(Date.now() + LOCK_TIME)
-      })
-    };
-
-    await UserModel.findByIdAndUpdate(user._id, updates);
-
-    const attemptsLeft = MAX_LOGIN_ATTEMPTS - (user.loginAttempts + 1);
-    const message = attemptsLeft > 0 
-      ? `Invalid credentials. ${attemptsLeft} attempts remaining`
-      : `Account locked for 15 minutes`;
-
-    return next(new Error(message, { cause: 401 }));
-  }
-
-  if (user.loginAttempts > 0 || user.lockUntil) {
-    await UserModel.findByIdAndUpdate(user._id, {
-      loginAttempts: 0,
-      lockUntil: null
-    });
-  }
-
   await mergeCarts(user._id, req.sessionID);
 const tokenType = user.role === roleEnum.ADMIN ? 'System' : 'User';
-console.log('Generating token for:', {
-  userId: user._id,
-  role: user.role,
-  tokenType
-});
+
 
 const credentials = login_Credentials(user, res, tokenType);
 
