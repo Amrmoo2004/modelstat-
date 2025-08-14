@@ -23,10 +23,10 @@ export const roleEnum = {
 } 
 
 export const signup = asynchandler(async (req, res, next) => {
-  const { username, email, password, phone } = req.body;
+  const { username, email, password, phone ,confirmPassword} = req.body;
   
   
-  if (!username || !email || !password || !phone) {
+  if (!username || !email || !password || !phone|| !confirmPassword) {
     return next(new Error("All fields are required", { cause: 400 }));
   }
 
@@ -35,7 +35,10 @@ export const signup = asynchandler(async (req, res, next) => {
   if (existingUser) {
       return next(new Error("Account already exists", { cause: 409 }));
     }
-  
+  if (password !== confirmPassword) {
+     return next(new Error("Passwords do not match", { cause: 400 }));
+    
+  }
 
   const user = await UserModel.create({
     username,

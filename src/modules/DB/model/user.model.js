@@ -57,9 +57,7 @@
       enum: Object.values(roleEnum),
       default: roleEnum.USER
     }, 
-    confirmationpassword:{ 
-      type: String,
-    },
+    
     provider: {
       type: String,
       enum: Object.values(providerEnum),
