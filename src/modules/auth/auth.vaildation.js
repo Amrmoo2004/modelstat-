@@ -15,7 +15,11 @@ export const authValidators = {
       .message('Password must contain at least 8 characters, one uppercase, one lowercase, one number ')
       .required(),
     phone: Joi.string().pattern(phonePattern).required(),
-    role: Joi.string().valid(...Object.values(roleEnum)).default(roleEnum.USER)
+    role: Joi.string().valid(...Object.values(roleEnum)).default(roleEnum.USER),
+  confirmPassword: Joi.string()
+    .valid(Joi.ref('password'))
+    .required()
+    .messages({ 'any.only': 'Passwords do not match' })
   }),
 
   // Login Validation
