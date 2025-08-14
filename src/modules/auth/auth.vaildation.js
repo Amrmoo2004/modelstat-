@@ -1,12 +1,10 @@
 import Joi from 'joi';
 import { roleEnum} from '../auth/auth.services.js';
 
-// Common validation patterns
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
-const phonePattern = /^\+?[1-9]\d{1,14}$/; // E.164 format
+const phonePattern = /^\(01[0-2,5]{1}[0-9]{8})$/ 
 
 export const authValidators = {
-  // Signup Validation
   signup: Joi.object({
     username: Joi.string().min(3).max(30).required(),
     email: Joi.string().email().required(),

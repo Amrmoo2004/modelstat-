@@ -35,11 +35,6 @@ export const signup = asynchandler(async (req, res, next) => {
   if (existingUser) {
       return next(new Error("Account already exists", { cause: 409 }));
     }
-  if (password !== confirmPassword) {
-     return next(new Error("Passwords do not match", { cause: 400 }));
-    
-  }
-
   const user = await UserModel.create({
     username,
     email,

@@ -13,7 +13,7 @@ export const login_Credentials = (user, res, tokenType) => {
     id: user._id.toString(),
     role: user.role,
     tokenVersion: user.tokenVersion,
-    tokenType // This is critical for verification
+    tokenType 
   };
 
   return {
