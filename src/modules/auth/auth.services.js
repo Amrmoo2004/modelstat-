@@ -10,6 +10,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { login_Credentials } from "../utilities/login_Creadtinals/login.creadtnials.js";
 import { mergeCarts } from "../utilities/cart/cartUtils.js";
 import { emailevnt } from "../utilities/events/email.events.js";
+import { setAuthCookies } from "../utilities/login_Creadtinals/login.creadtnials.js";
 
 const providerEnum = {
   google: "google",
@@ -32,63 +33,56 @@ export const signup = asynchandler(async (req, res, next) => {
   const existingUser = await UserModel.findOne({ email });
   
   if (existingUser) {
-    if (existingUser.isVerified) {
-      return next(new Error("Account already verified and exists", { cause: 409 }));
+      return next(new Error("Account already exists", { cause: 409 }));
     }
-    await UserModel.deleteOne({ _id: existingUser._id });
-  }
+  
 
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
   const user = await UserModel.create({
     username,
     email,
     password: await generatehash({ plaintext: password, saltround: process.env.SALTROUNDS }),
-    phone: await encrypt(phone, process.env.encryption_key),
-    otp,
-    otpExpires: new Date(Date.now() + 15 * 60 * 1000)
+    phone: await encrypt(phone, process.env.encryption_key)
   });
 
-  emailevnt.emit("confirmemail", {
-    to: email,
-    subject: "Verify Your Email",
-    otp,
-    username
-  });
 
   await mergeCarts(user._id, req.sessionID);
 
   return successResponse(res, {
-    message: "Verification OTP sent to your email",
+    message: "signup successful",
     userId: user._id
   }, 201);
 });
-
 export const login = asynchandler(async (req, res, next) => {
   const { email, password } = req.body;
- 
 
   if (!email || !password) {
     return next(new Error("Email and password are required", { cause: 400 }));
   }
 
-  const user = await UserModel.findOne({ 
-    email,
-    provider: providerEnum.local 
-  }).select('+password ');
+  const user = await UserModel.findOne({ email })
+    .select('+password +tokenVersion');
 
-  
+  if (!user) {
+    return next(new Error("Invalid credentials", { cause: 401 }));
+  }
 
-  // Authentication checks
-  if (!user) return next(new Error("Invalid credentials", { cause: 401 }));
-  if (!user.password) return next(new Error("Account not properly configured", { cause: 401 }));
+  const isValid = await comparehash(password, user.password);
+  if (!isValid) {
+    return next(new Error("Invalid credentials", { cause: 401 }));
+  }
 
-  await mergeCarts(user._id, req.sessionID);
-const tokenType = user.role === roleEnum.ADMIN ? 'System' : 'User';
+  const tokenType = user.role === roleEnum.ADMIN ? 'System' : 'User';
 
+  const credentials = login_Credentials(user, res, tokenType);
 
-const credentials = login_Credentials(user, res, tokenType);
+  setAuthCookies(res, credentials);
 
   return successResponse(res, {
+    user: {
+      id: user._id,
+      email: user.email,
+      role: user.role
+    },
     ...credentials,
     message: "Login successful"
   });
@@ -221,5 +215,92 @@ export const resendOtp = asynchandler(async (req, res, next) => {
 
   return successResponse(res, {
     message: "New verification code sent"
+  });
+});
+
+export const sendForgotPassword = asynchandler(async (req, res, next) => {
+  const { email } = req.body;
+  
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  const user = await UserModel.findOneAndUpdate(
+    {
+      email: email.toLowerCase().trim(), 
+      provider: providerEnum.local,
+      deletedAt: { $exists: false } 
+    },
+    {
+      $set: {
+        forgotPasswordOtp: await generatehash({ plaintext: otp, saltround: process.env.SALTROUNDS }),
+        otpExpires: new Date(Date.now() + 900000) // 15 minutes
+      },
+      $inc: { otpAttempts: 1 }
+    },
+    { 
+      new: true,
+      runValidators: true,
+      lean: true,
+      select: '-password -__v -tokens'
+    }
+  );
+
+  if (!user) {
+    return next(new Error("No active local user found with this email", { cause: 404 }));
+  }
+
+  emailevnt.emit("forgotpassword", {
+    to: user.email, 
+    subject: "Password Reset OTP",
+    otp: otp,
+    expiresIn: "15 minutes"
+  });
+
+  return successResponse(res, {
+    success: true,
+    message: "Password reset OTP sent successfully!",
+    data: {
+      email: user.email, 
+      otpExpiresIn: "15 minutes"
+    }
+  });
+});
+
+export const verifyPassword = asynchandler(async (req, res, next) => {
+  const { email, otp, password, confirmPassword } = req.body;
+
+  const user = await UserModel.findOne({
+  email: { $regex: new RegExp(`^${email}$`, 'i') }, 
+  provider: providerEnum.local,
+  deletedAt: { $exists: false },
+  forgotPasswordOtp: { $exists: true },
+  otpExpires: { $gt: new Date() }
+});
+
+  if (!user) {
+    return next(new Error("No account found with this email", { cause: 404 }));
+  }
+  if (!user.forgotPasswordOtp || !user.otpExpires) {
+    return next(new Error("No password reset request found", { cause: 400 }));
+  }
+
+  if (user.otpExpires < new Date()) {
+    return next(new Error("OTP has expired. Please request a new one", { cause: 400 }));
+  }
+
+  const isOtpValid = await comparehash(otp, user.forgotPasswordOtp);
+  if (!isOtpValid) {
+    return next(new Error("Invalid OTP", { cause: 400 }));
+  }
+  if (password !== confirmPassword) {
+    return next(new Error("Passwords do not match", { cause: 400 }));
+  }
+  user.password = await generatehash({ plaintext: password});
+  user.forgotPasswordOtp = undefined;
+  user.otpExpires = undefined;
+  await user.save();
+
+  return res.status(200).json({
+    success: true,
+    message: "Password updated successfully"
   });
 });

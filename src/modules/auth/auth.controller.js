@@ -12,6 +12,8 @@ router.post('/google/signup', validate(authValidators.googleAuth),auth.signupWit
 router.post('/google/login', validate(authValidators.googleAuth),auth.loginWithGmail);
 router.post('/verify-email', validate(authValidators.verifyEmail),auth.verifyEmail);
 router.post('/resend-otp', validate(authValidators.resendOtp),auth.resendOtp);
+router.patch('/sendforgotpassword',auth.sendForgotPassword);
+router.patch('/verifypassword',auth.verifyPassword);
 
 
 export default router; 

@@ -1,6 +1,5 @@
   import mongoose from "mongoose";
-  import bcrypt from "bcryptjs";
-  import jwt from "jsonwebtoken";
+
 
   const schema = mongoose.Schema;
 
@@ -57,6 +56,9 @@
       type: String,
       enum: Object.values(roleEnum),
       default: roleEnum.USER
+    }, 
+    confirmationpassword:{ 
+      type: String,
     },
     provider: {
       type: String,
@@ -67,9 +69,16 @@
       type: Date
     },
     picture: {
+    url: {
       type: String,
-      default: "default.jpg"
     },
+    public_id: {
+      type: String,
+    },
+    asset_id: {
+      type: String
+    }
+  },
     isActive: {
       type: Boolean,
       default: true
@@ -81,9 +90,19 @@
       type: Number,
       default: 0
     },
+     forgotPasswordOtp:{
+      type: String,
+default:null
+
+  },
     lockUntil: {
       type: Date
-    },
+    },tokenVersion: {
+    type: Number,
+    default: 0,
+    required: true
+  },
+    
     otp: String,
     otpExpires: Date
   }, {
@@ -92,6 +111,12 @@
   userSchema.virtual('fullName').get(function() {
     return `${this.firstName} ${this.lastName}`;
   });
+//   userSchema.pre('save', function(next) {
+//     if (!this.isModified('password')) return next();
+//     // Verify this matches your actual hashing logic
+//     this.password = generatehash(this.password, process.env.SALTROUNDS);
+//     next();
+// });
   // Virtuals
 
   userSchema.virtual('profile').get(function() {

@@ -7,8 +7,8 @@ import { isAuthorized } from "../middleware/allowed.js";
 import {productValidators} from "./products.validation.js";
 const router = Router();
 
-router.post("/create",authUser,isAuthorized(["admin"||"Admin"||"system"]), cloudfileuploader({ validation: filevalidation.Image }).array("Image", 10),
- validate(productValidators.createProduct)  ,products.createproduct)
+  router.post("/create",authUser,isAuthorized(["admin"||"Admin"||"system"]), cloudfileuploader({ validation: filevalidation.Image }).array("Image", 10),
+  validate(productValidators.createProduct)  ,products.createproduct)
 router.get("/getproducts",products.getAllProducts);
 router.get("/getbyid/:id", validate(productValidators.productId), products.getProductById);
 router.patch("/update/:id",authUser,isAuthorized(["admin"||"Admin"||"system"]),  validate(productValidators.productId, 'params'),

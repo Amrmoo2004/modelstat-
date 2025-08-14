@@ -4,50 +4,48 @@ import { asynchandler } from "../utilities/response/response.js";
 import jwt from "jsonwebtoken";
 
 
-export const authUser = asynchandler(async (req, res, next) => {
+export const authUser = async (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Invalid authorization format' });
+    let token;
+
+    if (req.headers.authorization?.startsWith("Bearer")) {
+      token = req.headers.authorization.split(" ")[1];
+    } else if (req.cookies?.access_token) {
+      token = req.cookies.access_token;
     }
-    
-    const token = authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Token required' });
 
-    // Decode without verification first to check the role
-    const unverified = jwt.decode(token);
-    if (!unverified) return res.status(401).json({ error: 'Invalid token format' });
+    if (!token) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
 
-    // Select secret based on role
-    const secret = unverified.role === 'admin' 
-      ? process.env.ACCESS_SYSTEM_TOKEN_SECRET 
-      : process.env.ACCESS_USER_TOKEN_SECRET;
+    let decoded;
+    try {
+      decoded = jwt.decode(token);
+      if (!decoded) throw new Error("Invalid token structure");
+      
+      const secret = decoded.tokenType === 'System'
+        ? process.env.ACCESS_SYSTEM_TOKEN_SECRET
+        : process.env.ACCESS_USER_TOKEN_SECRET;
+      
+      decoded = verify_token(token, secret);
+    } catch (err) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
 
-    console.log(`Verifying ${unverified.role} token with secret: ${secret.substring(0, 5)}...`);
 
-    const decoded = verify_token(token, secret);
-    
-    const userExists = await UserModel.exists({ _id: decoded.id });
-    if (!userExists) return res.status(401).json({ error: 'User not found' });
+    const userExists = await UserModel.findById(decoded.id).lean();
+    if (!userExists) {
+      return res.status(401).json({ message: "User not found, authentication required" });
+    }
 
-    req.authUser = decoded;
+    if (userExists.tokenVersion !== decoded.tokenVersion) {
+      return res.status(401).json({ message: "Session expired, please login again" });
+    }
+
+
+    req.user = userExists;
     next();
-    
-  } catch (error) {
-    console.error('Authentication error:', {
-      message: error.message,
-      name: error.name,
-      stack: error.stack
-    });
-    
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired' });
-    }
-    res.status(401).json({ 
-      error: 'Authentication failed',
-      details: error.message.includes('signature') 
-        ? 'Token verification failed - possible secret mismatch' 
-        : error.message
-    });
+  } catch (err) {
+    res.status(500).json({ message: "Internal server error" });
   }
-});
+};

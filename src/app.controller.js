@@ -17,14 +17,12 @@ import cookieParser from 'cookie-parser';
 
 
 
-// Load .env file from root directory
 dotenv.config({  });
 
 
 const app = express();  
-// Enable CORS properly
 const corsOptions ={
-  origin: true, // or your specific frontend origin
+  origin: true, 
   credentials: true,
   exposedHeaders: ['set-cookie']
 }
@@ -45,6 +43,7 @@ app.use(session({
 }));
 app.use(cors())
 app.use(compression());
+
 const port = process.env.PORT 
 export const bootstrap =async () => {
 app.get('/', (req, res) => {
@@ -66,6 +65,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")))
   app.use('/auth', authcontroller);
    app.use('/user', usercontroller);
    app.use('/cart',cartcontroller  );
+   app.use ('/user',usercontroller)
 
    app.use (globalErrorHandler);
 

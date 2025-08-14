@@ -1,19 +1,16 @@
 
 export const isAuthorized = (allowedRoles = []) => {
   return (req, res, next) => {
-    // Check if authUser exists (authentication succeeded)
-    if (!req.authUser) {
+    if (!req.user) {  
       return next(new Error('Authentication required', { cause: 401 }));
     }
 
-    // Check if user has required role
-    if (!allowedRoles.includes(req.authUser.role)) {
+    if (!allowedRoles.includes(req.user.role)) {
       return next(new Error(
-        `Role ${req.authUser.role} not authorized. Required: ${allowedRoles.join(', ')}`,
+        `Role ${req.user.role} not authorized. Required: ${allowedRoles.join(', ')}`,
         { cause: 403 }
       ));
     }
-        next();
-
-};
+    next();  
+  };  
 };

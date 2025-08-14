@@ -76,14 +76,12 @@ category: {
       }));
       await newProduct.save();
 
-  // Clean up files
   if (req.files?.length) {
     req.files.forEach(file => {
       if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
     });
   }
 
-  // Return response with populated category
   const populatedProduct = await productmodel.findById(newProduct._id)
     .populate('category', 'name_en name_ar');
 
