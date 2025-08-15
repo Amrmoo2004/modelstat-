@@ -13,7 +13,6 @@ export const categoryValidators = {
       .max(50)
       .required()
       .messages({
-        'string.pattern.base': 'Arabic name must contain only Arabic letters',
         'string.empty': 'Arabic name is required'
       }),
     
@@ -22,7 +21,6 @@ export const categoryValidators = {
       .max(50)
       .required()
       .messages({
-        'string.pattern.base': 'English name must contain only English letters',
         'string.empty': 'English name is required'
       }),
     

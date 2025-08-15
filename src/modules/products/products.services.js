@@ -134,54 +134,42 @@ export const getProductById = asynchandler(async (req, res, next) => {
 export const updateProduct = asynchandler(async (req, res, next) => {
     const { id } = req.params;
     
-    if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
-        return next(new Error('Request body must be a JSON object', { cause: 400 }));
-    }
-
-    const allowedFields = [
-        'name_en', 'name_ar',
-        'description_en', 'description_ar',
-        'category_en', 'category_ar',
-        'price', 'sizes', 'colour'
-    ];
-
-    const updates = {};
-    for (const field of allowedFields) {
-        if (req.body[field] !== undefined) { 
-            updates[field] = req.body[field];
-        }
-    }
-
-    if (Object.keys(updates).length === 0 && !req.files?.length) {
-        return next(new Error(
-            `No valid fields provided. Allowed fields: ${allowedFields.join(', ')} or images`,
-            { cause: 400 }
-        ));
-    }
-
-    const existingProduct = await productmodel.findById(id);
-    if (!existingProduct) {
-        return next(new Error('Product not found', { cause: 404 }));
-    }
-
+    // First check if we have files to process
     if (req.files?.length) {
         try {
+            const existingProduct = await productmodel.findById(id);
+            if (!existingProduct) {
+                return next(new Error('Product not found', { cause: 404 }));
+            }
+
+            // Delete old images if they exist
             if (existingProduct.images?.length) {
                 await destroyFile(existingProduct.images.map(img => img.public_id));
             }
 
+            // Upload new images
             const images = await uploadFiles(
                 req.files, 
                 `products/category/${existingProduct.category._id}/${existingProduct._id}`
             );
 
-            updates.images = images.map(img => ({
-                secure_url: img.secure_url,
-                url: img.url,
-                public_id: img.public_id,
-                asset_id: img.asset_id
-            }));
 
+            // Update only images first
+            await productmodel.findByIdAndUpdate(
+                id,
+                { 
+                    $set: {
+                        images: images.map(img => ({
+                            secure_url: img.secure_url,
+                            url: img.url,
+                            public_id: img.public_id,
+                            asset_id: img.asset_id
+                        }))
+                    }
+                }
+            );
+
+            // Clean up temp files
             req.files.forEach(file => {
                 if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
             });
@@ -190,28 +178,51 @@ export const updateProduct = asynchandler(async (req, res, next) => {
         }
     }
 
-    if (updates.sizes !== undefined) {
-        try {
-            updates.sizes = Array.isArray(updates.sizes) 
-                ? updates.sizes 
-                : JSON.parse(updates.sizes);
-        } catch (e) {
-            return next(new Error("Invalid sizes format", { cause: 400 }));
+    // Now handle regular field updates
+    if (req.body) {
+        const allowedFields = [
+            'name_en', 'name_ar',
+            'description_en', 'description_ar',
+            'category_en', 'category_ar',
+            'price', 'sizes', 'colour'
+        ];
+
+        const updates = {};
+        for (const field of allowedFields) {
+            if (req.body[field] !== undefined) { 
+                updates[field] = req.body[field];
+            }
+        }
+
+        if (Object.keys(updates).length > 0) {
+            // Process sizes if provided
+            if (updates.sizes !== undefined) {
+                try {
+                    updates.sizes = Array.isArray(updates.sizes) 
+                        ? updates.sizes 
+                        : JSON.parse(updates.sizes);
+                } catch (e) {
+                    return next(new Error("Invalid sizes format", { cause: 400 }));
+                }
+            }
+
+            await productmodel.findByIdAndUpdate(
+                id,
+                { $set: updates },
+                { runValidators: true }
+            );
         }
     }
 
-    const updatedProduct = await productmodel.findByIdAndUpdate(
-        id,
-        { $set: updates },
-        { new: true, runValidators: true }
-    ).populate('category', 'name_en name_ar');
+    // Return the fully updated product
+    const updatedProduct = await productmodel.findById(id)
+        .populate('category', 'name_en name_ar');
 
     return successResponse(res, {
         message: "Product updated successfully",
         data: updatedProduct
     });
 });
-
 export const deleteProduct = asynchandler(async (req, res, next) => {
 
     const { id } = req.params;

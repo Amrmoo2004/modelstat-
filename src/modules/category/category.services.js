@@ -3,12 +3,18 @@ import {asynchandler } from "../utilities/response/response.js";
 import { successResponse } from "../utilities/response/response.js";
 import { globalErrorHandler } from "../utilities/response/response.js";
 import { withCache } from "../utilities/cacheing/cache.util.js";
-
+ import { destroyFile, uploadFiles } from '../utilities/cloudinary/cloudinary.js';
+ import { filevalidation } from "../multer/locaal.multer.js";
+import fs from 'fs';
 
 export const createCategory = asynchandler(async (req, res, next) => {
-    const { name_ar, name_en, icon} = req.body;
+    const { name_ar, name_en } = req.body;
+    const iconFile = req.file; // Assuming single file upload for icon
 
-    // Check for existing category (duplicate prevention)
+    
+    
+
+    // Check for existing category
     const existingCategory = await categorymodel.findOne({ 
         $or: [{ name_ar }, { name_en }] 
     });
@@ -22,10 +28,36 @@ export const createCategory = asynchandler(async (req, res, next) => {
         });
     }
 
+    // Process icon image if provided
+    let iconData = null;
+    if (iconFile) {
+        try {
+            const uploadedIcon = await uploadFiles(
+                [iconFile], 
+                `categories/icons`
+            );
+            
+            iconData = {
+                secure_url: uploadedIcon[0].secure_url,
+                url: uploadedIcon[0].url,
+                public_id: uploadedIcon[0].public_id,
+                asset_id: uploadedIcon[0].asset_id
+            };
+
+            // Clean up temp file
+            if (fs.existsSync(iconFile.path)) {
+                fs.unlinkSync(iconFile.path);
+            }
+        } catch (error) {
+            return next(new Error(`Icon upload failed: ${error.message}`));
+        }
+    }
+
+    // Create category
     const newCategory = await categorymodel.create({
         name_ar,
         name_en,
-        icon: icon || undefined,
+        icon: iconData
     });
 
     return successResponse(res, {
@@ -33,7 +65,6 @@ export const createCategory = asynchandler(async (req, res, next) => {
         data: newCategory
     }, 201);
 });
-
 export const getAllCategories = asynchandler(async (req, res) => {
     const categories = await categorymodel.find().lean();
     return successResponse(res, { 

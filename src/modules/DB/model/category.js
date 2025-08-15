@@ -10,21 +10,12 @@ const categorySchema = new mongoose.Schema({
     required: true
   },
   
-    icon: { 
-        type: String,
-        default: "default-icon.png" 
-    },
-    picture: {
-    url: {
-      type: String,
-    },
-    public_id: {
-      type: String,
-    },
-    asset_id: {
-      type: String
-    }
-  },
+     icon: {
+    secure_url: String,
+    url: String,
+    public_id: String,
+    asset_id: String
+  }
 
 }, { timestamps: true });
 

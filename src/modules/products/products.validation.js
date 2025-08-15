@@ -104,5 +104,6 @@ export const productValidators = {
         'string.hex': 'Invalid product ID format',
         'string.length': 'Product ID must be 24 characters'
       })
-  })
+  }),
+
 };
