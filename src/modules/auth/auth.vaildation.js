@@ -2,7 +2,7 @@ import Joi from 'joi';
 import { roleEnum} from '../auth/auth.services.js';
 
 const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[A-Za-z\d@$!%*?&]{8,}$/;
-const phonePattern = /^\(01[0-2,5]{1}[0-9]{8})$/ 
+const phonePattern =  /^(\+20|0)?1[0125][0-9]{8}$/;
 
 export const authValidators = {
   signup: Joi.object({
