@@ -10,7 +10,7 @@ router.get("/all",validate(categoryValidators.categoryName, 'params'), category.
 router.get("/:id",validate(categoryValidators.categoryId, 'params'), category.getCategoryById);
 router.get("/name/:name", category.findCategoryByNameHandler);
 
-router.put("/:id",authUser,isAuthorized(["admin"||"Admin"||"system"]),  validate(categoryValidators.categoryId, 'params'),
+router.patch("/:id",authUser,isAuthorized(["admin"||"Admin"||"system"]),
   validate(categoryValidators.updateCategory),
  category.updateCategory);
 router.delete("/:id", validate(categoryValidators.categoryId, 'params'),authUser,isAuthorized(["admin"||"Admin"||"system"]), category.deleteCategory);

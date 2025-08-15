@@ -84,7 +84,8 @@ export const productValidators = {
       .max(500)
       .optional(),
     
-    price: Joi.string()
+    price: Joi.number()
+      .positive()
       .optional(),
     
     sizes: Joi.alternatives().try(

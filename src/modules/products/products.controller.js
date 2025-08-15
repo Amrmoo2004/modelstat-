@@ -11,7 +11,7 @@ const router = Router();
   validate(productValidators.createProduct)  ,products.createproduct)
 router.get("/getproducts",products.getAllProducts);
 router.get("/getbyid/:id", validate(productValidators.productId), products.getProductById);
-router.patch("/update/:id",authUser,isAuthorized(["admin"||"Admin"||"system"]),  validate(productValidators.productId, 'params'),
+router.patch("/update/:id",authUser,isAuthorized(["admin"||"Admin"||"system"]),cloudfileuploader({ validation: filevalidation.Image }).array("Image", 10),
   validate(productValidators.updateProduct), products.updateProduct);
-router.delete("/delete/:id",authUser,isAuthorized(["admin"||"Admin"||"system"]), validate(productValidators.productId, 'params'), products.deleteProduct);
+router.delete("/delete/:id",authUser,isAuthorized(["admin"||"Admin"||"system"]), products.deleteProduct);
 export default router;  

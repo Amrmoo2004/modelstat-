@@ -14,7 +14,18 @@ const categorySchema = new mongoose.Schema({
         type: String,
         default: "default-icon.png" 
     },
-slug: { type: String, unique: true }
+    picture: {
+    url: {
+      type: String,
+    },
+    public_id: {
+      type: String,
+    },
+    asset_id: {
+      type: String
+    }
+  },
+
 }, { timestamps: true });
 
 

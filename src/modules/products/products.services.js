@@ -2,7 +2,7 @@ import { productmodel } from "../DB/model/product.js";
 import { categorymodel } from "../DB/model/category.js";
 import {asynchandler } from "../utilities/response/response.js";
 import {successResponse } from "../utilities/response/response.js";
- import { uploadFiles } from '../utilities/cloudinary/cloudinary.js';
+ import { destroyFile, uploadFiles } from '../utilities/cloudinary/cloudinary.js';
 import fs from 'fs';
 
 export const createproduct = asynchandler(async (req, res, next) => {
@@ -132,49 +132,86 @@ export const getProductById = asynchandler(async (req, res, next) => {
     );
 });
 export const updateProduct = asynchandler(async (req, res, next) => {
-
     const { id } = req.params;
+    
     if (!req.body || typeof req.body !== 'object' || Array.isArray(req.body)) {
-    return next(new Error('Request body must be a JSON object', { cause: 400 }));
-  }
-
-  const allowedFields = [
-    'name_en', 'name_ar',
-    'description_en', 'description_ar',
-    'category_en', 'category_ar',
-    'price', 'sizes'
-  ];
-
-  const updates = {};
-  for (const field of allowedFields) {
-    if (req.body[field] !== undefined) { 
-      updates[field] = req.body[field];
+        return next(new Error('Request body must be a JSON object', { cause: 400 }));
     }
-  }
 
-  // 4. Validate updates
-  if (Object.keys(updates).length === 0) {
-    return next(new Error(
-      `No valid fields provided. Allowed fields: ${allowedFields.join(', ')}`,
-      { cause: 400 }
-    ));
-  }
+    const allowedFields = [
+        'name_en', 'name_ar',
+        'description_en', 'description_ar',
+        'category_en', 'category_ar',
+        'price', 'sizes', 'colour'
+    ];
 
-  const updatedProduct = await productmodel.findByIdAndUpdate(
-    id,
-    { $set: updates },
-    { new: true, runValidators: true }
-  );
+    const updates = {};
+    for (const field of allowedFields) {
+        if (req.body[field] !== undefined) { 
+            updates[field] = req.body[field];
+        }
+    }
 
-  if (!updatedProduct) {
-    return next(new Error('Product not found', { cause: 404 }));
-  }
+    if (Object.keys(updates).length === 0 && !req.files?.length) {
+        return next(new Error(
+            `No valid fields provided. Allowed fields: ${allowedFields.join(', ')} or images`,
+            { cause: 400 }
+        ));
+    }
 
-  return successResponse(res, {
-    message: "Product updated successfully",
-    data: updatedProduct
-  });
+    const existingProduct = await productmodel.findById(id);
+    if (!existingProduct) {
+        return next(new Error('Product not found', { cause: 404 }));
+    }
+
+    if (req.files?.length) {
+        try {
+            if (existingProduct.images?.length) {
+                await destroyFile(existingProduct.images.map(img => img.public_id));
+            }
+
+            const images = await uploadFiles(
+                req.files, 
+                `products/category/${existingProduct.category._id}/${existingProduct._id}`
+            );
+
+            updates.images = images.map(img => ({
+                secure_url: img.secure_url,
+                url: img.url,
+                public_id: img.public_id,
+                asset_id: img.asset_id
+            }));
+
+            req.files.forEach(file => {
+                if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+            });
+        } catch (error) {
+            return next(new Error(`Image update failed: ${error.message}`));
+        }
+    }
+
+    if (updates.sizes !== undefined) {
+        try {
+            updates.sizes = Array.isArray(updates.sizes) 
+                ? updates.sizes 
+                : JSON.parse(updates.sizes);
+        } catch (e) {
+            return next(new Error("Invalid sizes format", { cause: 400 }));
+        }
+    }
+
+    const updatedProduct = await productmodel.findByIdAndUpdate(
+        id,
+        { $set: updates },
+        { new: true, runValidators: true }
+    ).populate('category', 'name_en name_ar');
+
+    return successResponse(res, {
+        message: "Product updated successfully",
+        data: updatedProduct
+    });
 });
+
 export const deleteProduct = asynchandler(async (req, res, next) => {
 
     const { id } = req.params;

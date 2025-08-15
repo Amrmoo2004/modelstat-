@@ -6,7 +6,7 @@ import { withCache } from "../utilities/cacheing/cache.util.js";
 
 
 export const createCategory = asynchandler(async (req, res, next) => {
-    const { name_ar, name_en, icon } = req.body;
+    const { name_ar, name_en, icon} = req.body;
 
     // Check for existing category (duplicate prevention)
     const existingCategory = await categorymodel.findOne({ 
@@ -25,7 +25,7 @@ export const createCategory = asynchandler(async (req, res, next) => {
     const newCategory = await categorymodel.create({
         name_ar,
         name_en,
-        icon: icon || undefined
+        icon: icon || undefined,
     });
 
     return successResponse(res, {
@@ -81,7 +81,6 @@ export const getCategoryById = asynchandler(async (req, res, next) => {
 export const updateCategory = asynchandler(async (req, res, next) => {
     const updatedCategory = await categorymodel.findByIdAndUpdate(
         req.params.id,
-        req.body,
         { new: true, runValidators: true }
     );
 

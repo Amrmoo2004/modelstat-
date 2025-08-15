@@ -27,11 +27,11 @@ export const categoryValidators = {
       }),
     
     icon: Joi.string()
-      .uri()
       .optional()
       .messages({
         'string.uri': 'Icon must be a valid URL'
-      })
+      }),
+      
   }),
 
   // Update Category Validation
@@ -47,19 +47,10 @@ export const categoryValidators = {
       .optional(),
     
     icon: Joi.string()
-      .uri()
       .optional()
   }).min(1), // At least one field required for update
 
-  // Category ID Validation
-  categoryId: Joi.object({
-    id: Joi.string()
-      .required()
-      .messages({
-        'string.pattern.base': 'Invalid category ID format',
-        'string.empty': 'Category ID is required'
-      })
-  }),
+ 
 
   // Category Name Validation
   categoryName: Joi.object({
