@@ -54,35 +54,35 @@ export const signup = asynchandler(async (req, res, next) => {
 export const login = asynchandler(async (req, res, next) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    return next(new Error("Email and password are required", { cause: 400 }));
-  }
+
 
   const user = await UserModel.findOne({ email })
-    .select('+password +tokenVersion');
-
-  if (!user) {
+    .select('+password +tokenVersion +isActive');
+    
+  if (!user || !user.isActive) {
     return next(new Error("Invalid credentials", { cause: 401 }));
   }
 
   const isValid = await comparehash(password, user.password);
   if (!isValid) {
+    await UserModel.updateOne({ email }, { $inc: { loginAttempts: 1 } });
     return next(new Error("Invalid credentials", { cause: 401 }));
   }
 
   const tokenType = user.role === roleEnum.ADMIN ? 'System' : 'User';
-
-  const credentials = login_Credentials(user, res, tokenType);
-
-  setAuthCookies(res, credentials);
+  const { access_token, refresh_token } = login_Credentials(user, res, tokenType);
 
   return successResponse(res, {
-    user: {
-      id: user._id,
-      email: user.email,
-      role: user.role
+    statusCode: 200,
+    data: {
+      user: {
+        id: user._id,
+        email: user.email,
+        role: user.role
+      },
+      access_token, 
+      expires_in: 1800 // 30 minutes
     },
-    ...credentials,
     message: "Login successful"
   });
 });
