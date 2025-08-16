@@ -6,6 +6,7 @@ import categorycontroller from './modules/category/category.controller.js';
 import usercontroller from './modules/user/user.controller.js';
 import productcontroller from "./modules/products/products.controller.js"
 import cartcontroller from './modules/cart/cart.controller.js'
+import admincontroller from './modules/admin/admin.controller.js'
 import * as dotenv from 'dotenv';
 import path from 'path';
 import cors from 'cors';
@@ -13,7 +14,6 @@ import compression from 'compression';
 import MongoStore from 'connect-mongo';
 import session from 'express-session';  
 import cookieParser from 'cookie-parser';
-
 
 
 
@@ -51,6 +51,7 @@ app.get('/', (req, res) => {
 });
   await connectDB();
 
+
     app.use(express.json());
     app.use((req, res, next) => {
   req.socket.on('error', (err) => {
@@ -66,7 +67,8 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")))
    app.use('/user', usercontroller);
    app.use('/cart',cartcontroller  );
    app.use ('/user',usercontroller)
-
+app.use(express.urlencoded({ extended: true }));
+app.use ('/admin',admincontroller)
    app.use (globalErrorHandler);
 
   return app.listen(port, () => {

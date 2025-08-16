@@ -2,7 +2,7 @@ import { productmodel } from "../DB/model/product.js";
 import { categorymodel } from "../DB/model/category.js";
 import {asynchandler } from "../utilities/response/response.js";
 import {successResponse } from "../utilities/response/response.js";
- import { destroyFile, uploadFiles } from '../utilities/cloudinary/cloudinary.js';
+    import { destroyFile, uploadFiles } from '../utilities/cloudinary/cloudinary.js';
 import fs from 'fs';
 
 export const createproduct = asynchandler(async (req, res, next) => {
@@ -244,3 +244,5 @@ export const deleteProduct = asynchandler(async (req, res, next) => {
         200
     );
 });
+
+

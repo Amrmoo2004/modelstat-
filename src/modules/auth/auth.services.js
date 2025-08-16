@@ -5,14 +5,15 @@ import { successResponse } from "../utilities/response/response.js";
 import { comparehash } from "../utilities/security/hash.js";
 import { encrypt} from "../utilities/security/enc.js";
 import { decrypt } from "../utilities/security/dec.js";
-import { generate_token } from "../utilities/security/token.js";
+import { generate_token, verify_token } from "../utilities/security/token.js";
 import { OAuth2Client } from 'google-auth-library';
 import { login_Credentials } from "../utilities/login_Creadtinals/login.creadtnials.js";
 import { mergeCarts } from "../utilities/cart/cartUtils.js";
 import { emailevnt } from "../utilities/events/email.events.js";
 import { setAuthCookies } from "../utilities/login_Creadtinals/login.creadtnials.js";
+import redisClient from "../utilities/redis/redis.connection.js";
 
-const providerEnum = {
+export const providerEnum = {
   google: "google",
   local: "local"
 }
@@ -301,4 +302,52 @@ export const verifyPassword = asynchandler(async (req, res, next) => {
     success: true,
     message: "Password updated successfully"
   });
+});
+export const logout = asynchandler(async (req, res) => {
+  // 1. Extract token from Authorization header
+  const token = req.headers.authorization?.split(' ')[1];
+  
+  // 2. Clear cookies regardless of token presence
+  res.clearCookie('accessToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  });
+  
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  });
+
+  // 3. If no token, return immediately
+  if (!token) {
+    return res.sendStatus(204);
+  }
+
+  try {
+    // 4. Verify and decode token
+    const decoded = verify_token(token, process.env.verify_seckey);
+    const remainingExpiry = decoded.exp - Math.floor(Date.now() / 1000);
+
+    // 5. Only blacklist if token has remaining validity
+    if (remainingExpiry > 0) {
+      await redisClient.set(
+        `blacklist:${token}`, 
+        'revoked', 
+        { 
+          EX: remainingExpiry,
+          NX: true // Only set if not already exists
+        }
+      );
+      
+      console.log(`Token blacklisted for ${remainingExpiry} seconds`);
+    }
+
+    return res.sendStatus(204);
+  } catch (err) {
+    console.error('Logout error:', err.message);
+    // 6. Still return success even if token is invalid/expired
+    return res.sendStatus(204); 
+  }
 });

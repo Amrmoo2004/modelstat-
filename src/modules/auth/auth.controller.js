@@ -2,7 +2,7 @@ import { Router } from "express";
 import * as auth from "./auth.services.js";
  import {  validate } from '../middleware/validitor.js';
 import { authValidators } from './auth.vaildation.js';
-
+import checkTokenRevoked from "../middleware/Check Tokens.js";
 
 const router = Router();
 
@@ -14,6 +14,6 @@ router.post('/verify-email', validate(authValidators.verifyEmail),auth.verifyEma
 router.post('/resend-otp', validate(authValidators.resendOtp),auth.resendOtp);
 router.patch('/sendforgotpassword',auth.sendForgotPassword);
 router.patch('/verifypassword',auth.verifyPassword);
-
+router.post('/logout',checkTokenRevoked,auth.logout);
 
 export default router; 
