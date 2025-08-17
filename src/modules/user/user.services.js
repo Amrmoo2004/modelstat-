@@ -11,8 +11,13 @@ import fs from 'fs';
 
 
 export const updatepassword = asynchandler(async (req, res, next) => {
-  const { oldPassword, newPassword } = req.body;
-
+  const { oldPassword, newPassword, confirmPassword } = req.body;
+if (!oldPassword || !newPassword || !confirmPassword) {
+    return next(new Error("All fields are required", { cause: 400 }));
+  } 
+  if (newPassword !== confirmPassword) {
+    return next(new Error("New password and confirm password do not match", { cause:  400 }));
+  } 
   const user = await UserModel.findById(req.user._id)
     .select('+password +tokenVersion');
 
