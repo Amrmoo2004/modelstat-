@@ -112,8 +112,8 @@ export const getAllProducts = asynchandler(async (req, res, next) => {
 
 export const getProductById = asynchandler(async (req, res, next) => {
 
-    const { id } = req.params;
-    if (!id) {
+  const id = req.params.id || req.query.id;
+      if (!id) {
         return next(new Error("Product ID is required", { cause: 400 }));
     }
     
@@ -132,9 +132,7 @@ export const getProductById = asynchandler(async (req, res, next) => {
     );
 });
 export const updateProduct = asynchandler(async (req, res, next) => {
-    const { id } = req.params;
-    
-    // First check if we have files to process
+  const id = req.params.id || req.query.id;    
     if (req.files?.length) {
         try {
             const existingProduct = await productmodel.findById(id);
@@ -225,8 +223,8 @@ export const updateProduct = asynchandler(async (req, res, next) => {
 });
 export const deleteProduct = asynchandler(async (req, res, next) => {
 
-    const { id } = req.params;
-    if (!id) {
+  const id = req.params.id || req.query.id;
+      if (!id) {
         return next(new Error("Product ID is required", { cause: 400 }));
     }
     

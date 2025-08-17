@@ -74,8 +74,7 @@ export const getAllCategories = asynchandler(async (req, res) => {
 });
 
 export const findCategoryByNameHandler = asynchandler(async (req, res, next) => {
-    const { name } = req.params;
-    
+  const name = req.params.name || req.query.name;    
     const category = await categorymodel.findOne({
         $or: [{ name_ar: name }, { name_en: name }]
     });
@@ -111,7 +110,7 @@ export const getCategoryById = asynchandler(async (req, res, next) => {
 
 export const updateCategory = asynchandler(async (req, res, next) => {
     const updatedCategory = await categorymodel.findByIdAndUpdate(
-        req.params.id,
+        req.params.id|| req.query.id,
         { new: true, runValidators: true }
     );
 
@@ -129,7 +128,7 @@ export const updateCategory = asynchandler(async (req, res, next) => {
 });
 
 export const deleteCategory = asynchandler(async (req, res, next) => {
-    const deletedCategory = await categorymodel.findByIdAndDelete(req.params.id);
+    const deletedCategory = await categorymodel.findByIdAndDelete(req.query.id|| req.params.id);
 
     if (!deletedCategory) {
         return next({
