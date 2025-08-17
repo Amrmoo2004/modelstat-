@@ -71,6 +71,7 @@ export const login = asynchandler(async (req, res, next) => {
 
   const tokenType = user.role === roleEnum.ADMIN ? 'System' : 'User';
   const { access_token, refresh_token } = login_Credentials(user, res, tokenType);
+  const decryptedPhone = user.phone ? await decrypt(user.phone) : null;
 
   return successResponse(res, {
     statusCode: 200,
@@ -78,7 +79,9 @@ export const login = asynchandler(async (req, res, next) => {
       user: {
         id: user._id,
         email: user.email,
-        role: user.role
+        role: user.role,
+        phone: decryptedPhone,
+        username: user.username,
       },
       access_token, 
       expires_in: 1800 // 30 minutes

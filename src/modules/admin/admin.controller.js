@@ -14,15 +14,15 @@ import*as user from "../user/user.services.js"
 const router = Router();
 //admin_category
 router.post("/create_category",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),validate(categoryValidators.createCategory),cloudfileuploader({ validation: filevalidation.Image }).single('icon'||'Icon'), category.createCategory);
-router.patch("/update_category/:id",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),
+router.patch("/update_category/",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),
   validate(categoryValidators.updateCategory),
  category.updateCategory);
- router.delete("/delete_category/:id",checkTokenRevoked, validate(categoryValidators.categoryId, 'params'),authUser,isAuthorized(["admin"||"Admin"||"system"]), category.deleteCategory);
+ router.delete("/delete_category/",checkTokenRevoked, validate(categoryValidators.categoryId, 'params'),authUser,isAuthorized(["admin"||"Admin"||"system"]), category.deleteCategory);
 
 //product_admin
 router.post("/create_products",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]), cloudfileuploader({ validation: filevalidation.Image }).array("Image"||"image", 10),
   validate(productValidators.createProduct)  ,products.createproduct)
-router.patch("/update_products/:id",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),cloudfileuploader({ validation: filevalidation.Image }).array("Image"||"image", 10),
+router.patch("/update_products/",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),cloudfileuploader({ validation: filevalidation.Image }).array("Image"||"image", 10),
   validate(productValidators.updateProduct), products.updateProduct);
 router.delete("/delete_products/",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]), validate(productValidators.productId, 'params'), products.deleteProduct);
 router.post('/update_userrole/',user.update_userrole)
