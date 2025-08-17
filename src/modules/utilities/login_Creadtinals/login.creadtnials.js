@@ -44,5 +44,6 @@ export const setAuthCookies = (res, { access_token, refresh_token }) => {
     sameSite: 'strict',
     path: '/auth/refresh', 
     maxAge: 7 * 24 * 60 * 60 * 1000
+
   });
 };

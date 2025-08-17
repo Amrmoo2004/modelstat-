@@ -8,6 +8,8 @@ import * as category from '../category/category.services.js';
 import validate from "../middleware/validitor.js";
 import * as products from "../products/products.services.js";
 import { productValidators } from "../products/products.validation.js"
+import*as user from "../user/user.services.js"
+
 
 const router = Router();
 //admin_category
@@ -22,10 +24,10 @@ router.post("/create_products",checkTokenRevoked,authUser,isAuthorized(["admin"|
   validate(productValidators.createProduct)  ,products.createproduct)
 router.patch("/update_products/:id",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),cloudfileuploader({ validation: filevalidation.Image }).array("Image"||"image", 10),
   validate(productValidators.updateProduct), products.updateProduct);
-router.delete("/delete_products/:id",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]), validate(productValidators.productId, 'params'), products.deleteProduct);
-
-
-
+router.delete("/delete_products/",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]), validate(productValidators.productId, 'params'), products.deleteProduct);
+router.post('/update_userrole/',user.update_userrole)
+router.get('/get_users/',checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),user.get_users)
+router.delete('/delete_user/',checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),validate(user.userId, 'params'),user.deleteuser)
 
 
 export default router;

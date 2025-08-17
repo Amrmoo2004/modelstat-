@@ -127,3 +127,46 @@ export const updateProfile = asynchandler(async (req, res, next) => {
     message: 'Profile updated successfully'
   });
 });
+export const update_userrole= asynchandler(async (req, res, next) => {
+
+  const { role } = req.body;
+  const user = await UserModel.findById(req.params.id||req.query.id);
+
+  if (!user) {
+    return next(new Error('User not found', { cause: 404 }));
+  }
+
+  user.role = role;
+  await user.save();  
+  return res.status(200).json({
+    success: true,
+    message: 'User role updated successfully'
+  });
+})
+export const get_users= asynchandler(async (req, res, next) => {
+  const users = await UserModel.find();
+  if (!users) {
+    return next(new Error('Users not found', { cause: 404 }));
+  }
+
+  return res.status(200).json({
+    success: true,
+    data: users
+  });
+})  
+export const deleteuser = asynchandler(async (req, res, next) => {
+  const user = await UserModel.findByIdAndDelete(req.params.id || req.query.id);
+  
+  if (!user) {
+    return next(new Error('User not found', { cause: 404 }));
+  }
+
+  if (user.picture?.public_id) {
+    await destroyFile(user.picture.public_id);
+  }
+
+  return res.status(200).json({
+    success: true,
+    message: 'User deleted successfully'
+  });
+})
