@@ -22,13 +22,19 @@ dotenv.config({  });
 
 
 const app = express();  
-const corsOptions ={
-  origin:  '*',  
-   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}
-app.use(cors(corsOptions));
+const corsOptions = {
+  origin: [
+    'http://localhost:5173', // Development
+    'http://168.231.104.227:3000',
+    'http://localhost:3000', // Development
+    'https://modelstar-eg.com', // Production
+    'https://www.modelstar-eg.com' // Production with www
+  ],
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+  credentials: true, // Required for cookies/sessions
+  optionsSuccessStatus: 204
+};
+
 app.use(cookieParser());
 
 app.use(session({
