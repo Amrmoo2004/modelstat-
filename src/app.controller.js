@@ -23,7 +23,7 @@ dotenv.config({  });
 
 const app = express();  
 const corsOptions ={
-  origin: true, 
+  origin:  '*',  
    methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
@@ -43,7 +43,6 @@ app.use(session({
     maxAge: 14 * 24 * 60 * 60 * 1000 // 14 days
   }
 }));
-app.use(cors({origin:"*", credentials: true}));
 app.use(express.json());
 app.use(compression());
 

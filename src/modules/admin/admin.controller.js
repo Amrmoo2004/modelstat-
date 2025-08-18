@@ -22,7 +22,7 @@ router.patch("/update_category/:id",checkTokenRevoked,authUser,isAuthorized(["ad
 //product_admin
 router.post("/create_products",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]), cloudfileuploader({ validation: filevalidation.Image }).array("Image"||"image", 10),
   validate(productValidators.createProduct)  ,products.createproduct)
-router.patch("/update_products/:id",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),cloudfileuploader({ validation: filevalidation.Image }).array("Image"||"image", 10),
+router.patch("    ",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),cloudfileuploader({ validation: filevalidation.Image }).array("Image"||"image", 10),
   validate(productValidators.updateProduct), products.updateProduct);
 router.delete("/delete_products/:id",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]), products.deleteProduct);
 //user_admin
