@@ -42,7 +42,8 @@ app.use(session({
     maxAge: 14 * 24 * 60 * 60 * 1000 // 14 days
   }
 }));
-app.use(cors())
+app.use(cors({origin:"*", credentials: true}));
+app.use(express.json());
 app.use(compression());
 
 const port = process.env.PORT 
