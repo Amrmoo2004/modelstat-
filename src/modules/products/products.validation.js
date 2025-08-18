@@ -50,12 +50,7 @@ export const productValidators = {
         'string.pattern.base': 'Price must be a valid number with up to 2 decimal places'
         
       }),
-    colour: Joi.string()
-      .required()
-      .messages({
-        'string.pattern.base': 'Price must be a valid number with up to 2 decimal places'
-        
-      }),
+    
     sizes: Joi.alternatives().try(
       Joi.array().items(Joi.string()),
       Joi.string() // For JSON string
