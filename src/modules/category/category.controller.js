@@ -12,4 +12,4 @@ router.get("/all",validate(categoryValidators.categoryName, 'params'), category.
 router.get("/:id",validate(categoryValidators.categoryId, 'params'), category.getCategoryById);
 router.get("/name/:name", category.findCategoryByNameHandler);
 
-export default router; 
+export default router;  

@@ -1,5 +1,6 @@
   import mongoose from "mongoose";
-  const schema = mongoose.Schema;
+  const Schema = mongoose.Schema;
+  
   const productSchema = new mongoose.Schema({
   name_en: {
     type: String,
