@@ -215,7 +215,7 @@ export const updateProduct = asynchandler(async (req, res, next) => {
     // Return the fully updated product
     const updatedProduct = await productmodel.findById(id)
         .populate('category', 'name_en name_ar');
-
+    
     return successResponse(res, {
         message: "Product updated successfully",
         data: updatedProduct
