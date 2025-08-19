@@ -46,8 +46,7 @@ export const createCategory = asynchandler(async (req, res, next) => {
 
       const uploadedIcon = await uploadFiles(
         [iconFile],
-        `categories/icons`
-      );
+   `/category/icons/${existingCategory._id}}`      );
 
       iconData = {
         secure_url: uploadedIcon[0].secure_url,
@@ -56,7 +55,6 @@ export const createCategory = asynchandler(async (req, res, next) => {
         asset_id: uploadedIcon[0].asset_id
       };
 
-      // Clean up temp file
       if (fs.existsSync(iconFile.path)) {
         fs.unlinkSync(iconFile.path);
       }
@@ -68,7 +66,6 @@ export const createCategory = asynchandler(async (req, res, next) => {
     console.log('No icon file provided in request');
   }
 
-  // Create category
   const newCategory = await categorymodel.create({
     name_ar,
     name_en,
@@ -145,7 +142,7 @@ export const updateCategory = asynchandler(async (req, res, next) => {
       
       const uploadedIcon = await uploadFiles(
         [iconFile], 
-        `categories/icons`
+       `/category/icons/${existingCategory._id}}`
       );
       
       updateData.icon = {
