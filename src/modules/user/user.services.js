@@ -148,17 +148,29 @@ export const update_userrole= asynchandler(async (req, res, next) => {
     message: 'User role updated successfully'
   });
 })
-export const get_users= asynchandler(async (req, res, next) => {
-  const users = await UserModel.find();
-  if (!users) {
+export const get_users = asynchandler(async (req, res, next) => {
+  const users = await UserModel.find().lean();
+  
+  if (!users || users.length === 0) {
     return next(new Error('Users not found', { cause: 404 }));
   }
 
+  const usersWithDecryptedPhones = users.map(user => {
+    // Create a copy of the user object
+    const userCopy = { ...user };
+    
+    if (userCopy.phone) {
+      userCopy.phone = decrypt(userCopy.phone);
+    }
+    
+    return userCopy;
+  });
+
   return res.status(200).json({
     success: true,
-    data: users
+    data: usersWithDecryptedPhones
   });
-})  
+});
 export const deleteuser = asynchandler(async (req, res, next) => {
   const user = await UserModel.findByIdAndDelete(req.params.id || req.query.id);
   
