@@ -44,7 +44,7 @@ export const categoryValidators = {
       .max(50)
       .optional(),
     
-    icon: Joi.string()
+    icon: Joi
       .optional()
   }).min(1), // At least one field required for update
 
