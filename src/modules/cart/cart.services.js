@@ -36,10 +36,9 @@ export const addToCart = asynchandler(async (req, res) => {
     });
   }
 
-  const existingItemIndex = cart.items.findIndex(item => {
-    if (!item.productId.equals(productId)) return false;    
-
-  });
+  const existingItemIndex = cart.items.findIndex(item => 
+  item.productId.equals(productId)
+);
 
   if (existingItemIndex >= 0) {
     cart.items[existingItemIndex].quantity += quantity;
