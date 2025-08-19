@@ -109,24 +109,56 @@ export const getCategoryById = asynchandler(async (req, res, next) => {
 });
 
 export const updateCategory = asynchandler(async (req, res, next) => {
-    const updatedCategory = await categorymodel.findByIdAndUpdate(
-        req.params.id|| req.query.id,
-        { new: true, runValidators: true }
-    );
-
-    if (!updatedCategory) {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    
+    const existingCategory = await categorymodel.findById(id);
+    if (!existingCategory) {
         return next({
             message: "Category not found",
             statusCode: 404
         });
     }
 
+    if (req.files && req.files.icon) {
+        try {
+            const iconFile = req.files.icon;
+            
+            if (existingCategory.icon && existingCategory.icon.public_id) {
+                await deleteFile(existingCategory.icon.public_id);
+            }
+            
+            const uploadedIcon = await uploadFiles(
+                [iconFile], 
+                `categories/icons`
+            );
+            
+            updateData.icon = {
+                secure_url: uploadedIcon[0].secure_url,
+                url: uploadedIcon[0].url,
+                public_id: uploadedIcon[0].public_id,
+                asset_id: uploadedIcon[0].asset_id
+            };
+
+            if (fs.existsSync(iconFile.path)) {
+                fs.unlinkSync(iconFile.path);
+            }
+        } catch (error) {
+            return next(new Error(`Icon upload failed: ${error.message}`));
+        }
+    }
+
+    const updatedCategory = await categorymodel.findByIdAndUpdate(
+        id,
+        updateData,
+        { new: true, runValidators: true }
+    );
+
     return successResponse(res, {
         message: "Category updated successfully",
         data: updatedCategory
     });
 });
-
 export const deleteCategory = asynchandler(async (req, res, next) => {
     const deletedCategory = await categorymodel.findByIdAndDelete(req.query.id|| req.params.id);
 
