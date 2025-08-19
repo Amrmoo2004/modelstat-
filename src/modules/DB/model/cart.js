@@ -15,10 +15,7 @@ const cartSchema = new mongoose.Schema({
     price: { type: Number, required: true }, // Snapshot of price at time of addition
     name: String,
     image: String,
-   variant: {
-  color: String,
-  size: String
-}
+
      
     }
   ],

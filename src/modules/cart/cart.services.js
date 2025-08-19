@@ -6,23 +6,19 @@ import mongoose from 'mongoose';
 
 
 export const addToCart = asynchandler(async (req, res) => {
-  const { productId, quantity = 1, variant } = req.body;
+  const { productId, quantity = 1 } = req.body;
 
-  // 1. Input Validation
   if (!mongoose.Types.ObjectId.isValid(productId)) {
     return res.status(400).json({ error: 'Invalid product ID' });
   }
 
-  // 2. Get Product
   const product = await productmodel.findById(productId);
   if (!product) return res.status(404).json({ error: 'Product not found' });
 
-  // 3. Session Handling
   const sessionIdentifier = req.user?._id 
     ? `user_${req.user._id}`
     : req.cookies?.cartSessionId || req.sessionID;
 
-  // 4. Find or Create Cart
   let cart = await cartmodel.findOne({
     $or: [
       { userId: req.user?._id },
@@ -40,32 +36,11 @@ export const addToCart = asynchandler(async (req, res) => {
     });
   }
 
-  // 5. Strict Item Matching
   const existingItemIndex = cart.items.findIndex(item => {
-    // First check if product IDs match
-    if (!item.productId.equals(productId)) return false;
-    
-    // If both have no variants, they match
-    if (!item.variant && !variant) return true;
-    
-    // If only one has variant, they don't match
-    if (!item.variant || !variant) return false;
-    
-    // Deep compare variants
-    const itemKeys = Object.keys(item.variant).sort();
-    const newKeys = Object.keys(variant).sort();
-    
-    // Different number of variant properties
-    if (itemKeys.length !== newKeys.length) return false;
-    
-    // Compare each variant property
-    return itemKeys.every(key => 
-      String(item.variant[key]).toLowerCase() === 
-      String(variant[key]).toLowerCase()
-    );
+    if (!item.productId.equals(productId)) return false;    
+
   });
 
-  // 6. Update or Add Item
   if (existingItemIndex >= 0) {
     cart.items[existingItemIndex].quantity += quantity;
   } else {
@@ -75,18 +50,14 @@ export const addToCart = asynchandler(async (req, res) => {
       price: product.price,
       name: product.name,
       image: product.images[0]?.secure_url,
-      variant: variant || undefined
     });
   }
 
-  // 7. Update Cart Totals
   cart.total = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   cart.totalQuantity = cart.items.reduce((sum, item) => sum + item.quantity, 0);
 
-  // 8. Save Cart
   const savedCart = await cart.save();
 
-  // 9. Set Session Cookie if needed
   if (!req.user?._id && !req.cookies?.cartSessionId) {
     res.cookie('cartSessionId', sessionIdentifier, { 
       maxAge: 30 * 24 * 60 * 60 * 1000,

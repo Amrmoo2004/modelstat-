@@ -7,14 +7,14 @@ import {
   clearCart,
   applyCoupon 
 } from "../cart/cart.services.js";
+import { optionalAuth } from "../middleware/optionalauth.js";
 const router = Router();
-
-router.post('/', addToCart);          // Add item
-router.get('/',  getCart);            // Get cart
-router.put('/items/:itemId',updateItem);     // Update quantity
-router.delete('/items/:itemId', removeItem);  // Remove item
-router.post('/coupons',applyCoupon);         // Apply coupon
-router.delete('/',clearCart);                // Clear cart
-
+router.use(optionalAuth); 
+router.post('/', addToCart);          
+router.get('/',  getCart);           
+router.put('/items/:itemId',updateItem);     
+router.delete('/items/:itemId', removeItem);  
+router.post('/coupons',applyCoupon);         
+router.delete('/',clearCart);              
 
 export default router; 
