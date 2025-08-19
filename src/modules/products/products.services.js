@@ -18,18 +18,15 @@ export const createproduct = asynchandler(async (req, res, next) => {
     
   } = req.body;
 
-  // Validate required fields
   if (!req.body) {
     return next(new Error("Request body is missing", { cause: 400 }));
   }
 
-  // Validate category exists
   const categoryExists = await categorymodel.findById(category);
   if (!categoryExists) {
     return next(new Error("Invalid category reference", { cause: 400 }));
   }
 
-  // Process sizes
   let sizesArray = [];
   if (sizes) {
     try {
@@ -40,7 +37,6 @@ export const createproduct = asynchandler(async (req, res, next) => {
   }
 
 
-  // Create product
   const newProduct = await productmodel.create({
     name_en: name_en.trim(),
     name_ar: name_ar.trim(),
@@ -58,7 +54,6 @@ category: {
     rating: 0,
   });
   
-  // Upload images
   let images = [];
   if (req.files?.length) {
     try {

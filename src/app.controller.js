@@ -28,7 +28,7 @@ origin:'*', // Allow all origins or specify your frontend URL
   credentials: true, // Required for cookies/sessions
   optionsSuccessStatus: 204
 };
-
+app.use(cors(corsOptions));
 app.use(cookieParser());
 
 app.use(session({

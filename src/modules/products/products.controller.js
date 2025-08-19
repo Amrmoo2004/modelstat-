@@ -6,5 +6,5 @@ import {productValidators} from "./products.validation.js";
 
 const router = Router();
 router.get("/getproducts",products.getAllProducts);
-router.get("/getbyid/:id", validate(productValidators.productId), products.getProductById);
+router.get("/getbyid/:id", products.getProductById);
 export default router;  
