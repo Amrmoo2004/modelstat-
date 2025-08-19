@@ -8,7 +8,7 @@ const router = Router();
 router.post('/create',authUser, checkTokenRevoked,checkoutMiddleware.validateCheckoutRequest ,checkout.createCheckout);
 router.put('/update/:id', authUser, checkTokenRevoked, checkout.updateafterpayment);
 router.post('/confirm/:id', authUser, checkTokenRevoked, checkout.confairmCheckout);
-
+router
 
 
 export default router;
