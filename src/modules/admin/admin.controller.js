@@ -14,9 +14,7 @@ import * as userValidators from "../user/user.validation.js";
 const router = Router();
 //admin_category
 router.post("/create_category",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),validate(categoryValidators.createCategory),cloudfileuploader({ validation: filevalidation.Image }).single('icon'||'Icon'), category.createCategory);
-router.patch("/update_category/:id",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"],validate(categoryValidators.createCategory),cloudfileuploader({ validation: filevalidation.Image }).single('icon'||'Icon')),
-  validate(categoryValidators.updateCategory),
- category.updateCategory);
+router.patch("/update_category/:id",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),validate(categoryValidators.updateCategory),cloudfileuploader({ validation: filevalidation.Image }).single('icon'||'Icon'), category.updateCategory);
  router.delete("/delete_category/:id",checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]), category.deleteCategory);
 
 //product_admin
