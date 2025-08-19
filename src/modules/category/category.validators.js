@@ -24,7 +24,7 @@ export const categoryValidators = {
         'string.empty': 'English name is required'
       }),
     
-    icon: Joi.string()
+    icon: Joi
       .optional()
       .messages({
         'string.uri': 'Icon must be a valid URL'
