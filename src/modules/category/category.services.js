@@ -135,14 +135,12 @@ export const updateCategory = asynchandler(async (req, res, next) => {
     });
   }
 
-  // Check if a file was uploaded with the correct field name
   if (req.file) {
     try {
       const iconFile = req.file;
       
-      // Delete old icon if exists
       if (existingCategory.icon && existingCategory.icon.public_id) {
-        await deleteFile(existingCategory.icon.public_id);
+        await destroyFile(existingCategory.icon.public_id);
       }
       
       const uploadedIcon = await uploadFiles(
