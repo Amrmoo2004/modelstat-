@@ -11,7 +11,6 @@ export const createCategory = asynchandler(async (req, res, next) => {
   const { name_ar, name_en } = req.body;
   const iconFile = req.file;
 
-  // Validate required fields
   if (!name_ar || !name_en) {
     return next({
       message: "Both Arabic and English names are required",
@@ -19,7 +18,6 @@ export const createCategory = asynchandler(async (req, res, next) => {
     });
   }
 
-  // Check for existing category
   const existingCategory = await categorymodel.findOne({
     $or: [{ name_ar }, { name_en }]
   });
@@ -33,27 +31,20 @@ export const createCategory = asynchandler(async (req, res, next) => {
     });
   }
 
-  // Create category first to get the ID
-  const newCategory = await categorymodel.create({
-    name_ar,
-    name_en,
-    icon: null // Initialize with null, will update later
-  });
-
-  // Process icon image if provided
   let iconData = null;
+  
   if (iconFile) {
     try {
-      // Log file info for debugging
-      console.log('Processing file:', {
-        originalname: iconFile.originalname,
-        mimetype: iconFile.mimetype,
-        size: iconFile.size
-      });
+      if (!iconFile.mimetype.startsWith('image/')) {
+        return next({
+          message: "Uploaded file must be an image",
+          statusCode: 400
+        });
+      }
 
       const uploadedIcon = await uploadFiles(
         [iconFile],
-        `/category/icons/${newCategory._id}` // Use the newly created category ID
+        `/category/icons/temp_${Date.now()}` 
       );
 
       iconData = {
@@ -63,27 +54,46 @@ export const createCategory = asynchandler(async (req, res, next) => {
         asset_id: uploadedIcon[0].asset_id
       };
 
-      // Update category with icon data
-      newCategory.icon = iconData;
-      await newCategory.save();
-
       if (fs.existsSync(iconFile.path)) {
         fs.unlinkSync(iconFile.path);
       }
     } catch (error) {
       console.error('File upload error:', error);
-      // Delete the category if icon upload fails
-      await categorymodel.findByIdAndDelete(newCategory._id);
       return next(new Error(`Icon upload failed: ${error.message}`));
     }
-  } else {
-    console.log('No icon file provided in request');
   }
 
-  return successResponse(res, {
-    message: "Category created successfully",
-    data: newCategory
-  }, 201);
+  try {
+    const newCategory = await categorymodel.create({
+      name_ar,
+      name_en,
+      icon: iconData 
+    });
+
+    if (iconData && iconData.public_id) {
+      try {
+        await renameFile(iconData.public_id, `/category/icons/${newCategory._id}`);
+      } catch (renameError) {
+        console.warn('Failed to rename image, but category was created:', renameError);
+      }
+    }
+
+    return successResponse(res, {
+      message: "Category created successfully",
+      data: newCategory
+    }, 201);
+
+  } catch (dbError) {
+    if (iconData && iconData.public_id) {
+      try {
+        await destroyFile(iconData.public_id);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup image after category creation failed:', cleanupError);
+      }
+    }
+    
+    return next(new Error(`Category creation failed: ${dbError.message}`));
+  }
 });
 export const getAllCategories = asynchandler(async (req, res) => {
     const categories = await categorymodel.find().lean();
@@ -150,7 +160,7 @@ export const updateCategory = asynchandler(async (req, res, next) => {
       
       const uploadedIcon = await uploadFiles(
         [iconFile], 
-        `/category/icons/${existingCategory._id}` // FIXED: Removed extra }
+        `/category/icons/${existingCategory._id}` 
       );
       
       updateData.icon = {
