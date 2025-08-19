@@ -150,27 +150,35 @@ export const updateCategory = asynchandler(async (req, res, next) => {
     });
   }
 
+  let iconData = null;
+  
+  // Process image upload first (before updating category)
   if (req.file) {
     try {
       const iconFile = req.file;
       
-      if (existingCategory.icon && existingCategory.icon.public_id) {
-        await destroyFile(existingCategory.icon.public_id);
+      // Validate file
+      if (!iconFile.mimetype.startsWith('image/')) {
+        return next({
+          message: "Uploaded file must be an image",
+          statusCode: 400
+        });
       }
-      
+
+      // Upload new image first
       const uploadedIcon = await uploadFiles(
         [iconFile], 
-        `/category/icons/${existingCategory._id}` 
+        `/category/icons/temp_update_${Date.now()}` // Temporary path
       );
       
-      updateData.icon = {
+      iconData = {
         secure_url: uploadedIcon[0].secure_url,
         url: uploadedIcon[0].url,
         public_id: uploadedIcon[0].public_id,
         asset_id: uploadedIcon[0].asset_id
       };
 
-      // Clean up temp file
+      // Clean up temp file immediately
       if (fs.existsSync(iconFile.path)) {
         fs.unlinkSync(iconFile.path);
       }
@@ -180,16 +188,57 @@ export const updateCategory = asynchandler(async (req, res, next) => {
     }
   }
 
-  const updatedCategory = await categorymodel.findByIdAndUpdate(
-    id,
-    updateData,
-    { new: true, runValidators: true }
-  );
+  // Now update the category
+  try {
+    // If we have a new icon, add it to update data
+    if (iconData) {
+      updateData.icon = iconData;
+    }
 
-  return successResponse(res, {
-    message: "Category updated successfully",
-    data: updatedCategory
-  });
+    const updatedCategory = await categorymodel.findByIdAndUpdate(
+      id,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    // If update was successful and we uploaded a new image, 
+    // delete the old image and rename the new one
+    if (iconData && iconData.public_id) {
+      try {
+        // Delete old image if it exists
+        if (existingCategory.icon && existingCategory.icon.public_id) {
+          await destroyFile(existingCategory.icon.public_id);
+        }
+        
+        // Rename the new image to use the category ID
+        await renameFile(iconData.public_id, `/category/icons/${existingCategory._id}`);
+        
+        // Update the category with the final public_id
+        updatedCategory.icon.public_id = `/category/icons/${existingCategory._id}`;
+        await updatedCategory.save();
+      } catch (cleanupError) {
+        console.warn('Failed to cleanup old image or rename new image:', cleanupError);
+        // This is non-critical - the update succeeded, just image management failed
+      }
+    }
+
+    return successResponse(res, {
+      message: "Category updated successfully",
+      data: updatedCategory
+    });
+
+  } catch (dbError) {
+    // If category update fails, clean up the uploaded image
+    if (iconData && iconData.public_id) {
+      try {
+        await destroyFile(iconData.public_id);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup image after category update failed:', cleanupError);
+      }
+    }
+    
+    return next(new Error(`Category update failed: ${dbError.message}`));
+  }
 });
 export const deleteCategory = asynchandler(async (req, res, next) => {
     const deletedCategory = await categorymodel.findByIdAndDelete(req.query.id|| req.params.id);
