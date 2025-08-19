@@ -31,7 +31,7 @@ export const createCategory = asynchandler(async (req, res, next) => {
     });
   }
 
-  let iconData = null;
+  let iconData = [];
   
   if (iconFile) {
     try {
@@ -44,7 +44,7 @@ export const createCategory = asynchandler(async (req, res, next) => {
 
       const uploadedIcon = await uploadFiles(
         [iconFile],
-        `/category/icons/temp_${Date.now()}` 
+        `/category/icons/temp_${Date.now()}`
       );
 
       iconData = {
@@ -67,14 +67,21 @@ export const createCategory = asynchandler(async (req, res, next) => {
     const newCategory = await categorymodel.create({
       name_ar,
       name_en,
-      icon: iconData 
+      icon: iconData
     });
+
+
 
     if (iconData && iconData.public_id) {
       try {
-        await renameFile(iconData.public_id, `/category/icons/${newCategory._id}`);
-      } catch (renameError) {
-        console.warn('Failed to rename image, but category was created:', renameError);
+     
+        const newPath = `/category/icons/${newCategory._id}`;
+        
+        
+        console.log(`Image stored at: ${iconData.public_id}`);
+        
+      } catch (pathError) {
+        console.warn('Could not update image path:', pathError);
       }
     }
 
@@ -152,12 +159,10 @@ export const updateCategory = asynchandler(async (req, res, next) => {
 
   let iconData = null;
   
-  // Process image upload first (before updating category)
   if (req.file) {
     try {
       const iconFile = req.file;
       
-      // Validate file
       if (!iconFile.mimetype.startsWith('image/')) {
         return next({
           message: "Uploaded file must be an image",
@@ -165,10 +170,9 @@ export const updateCategory = asynchandler(async (req, res, next) => {
         });
       }
 
-      // Upload new image first
       const uploadedIcon = await uploadFiles(
         [iconFile], 
-        `/category/icons/temp_update_${Date.now()}` // Temporary path
+        `/category/icons/${existingCategory._id}` 
       );
       
       iconData = {
@@ -178,7 +182,6 @@ export const updateCategory = asynchandler(async (req, res, next) => {
         asset_id: uploadedIcon[0].asset_id
       };
 
-      // Clean up temp file immediately
       if (fs.existsSync(iconFile.path)) {
         fs.unlinkSync(iconFile.path);
       }
@@ -188,11 +191,17 @@ export const updateCategory = asynchandler(async (req, res, next) => {
     }
   }
 
-  // Now update the category
   try {
-    // If we have a new icon, add it to update data
     if (iconData) {
       updateData.icon = iconData;
+      
+      if (existingCategory.icon && existingCategory.icon.public_id) {
+        try {
+          await destroyFile(existingCategory.icon.public_id);
+        } catch (deleteError) {
+          console.warn('Failed to delete old image:', deleteError);
+        }
+      }
     }
 
     const updatedCategory = await categorymodel.findByIdAndUpdate(
@@ -201,34 +210,12 @@ export const updateCategory = asynchandler(async (req, res, next) => {
       { new: true, runValidators: true }
     );
 
-    // If update was successful and we uploaded a new image, 
-    // delete the old image and rename the new one
-    if (iconData && iconData.public_id) {
-      try {
-        // Delete old image if it exists
-        if (existingCategory.icon && existingCategory.icon.public_id) {
-          await destroyFile(existingCategory.icon.public_id);
-        }
-        
-        // Rename the new image to use the category ID
-        await renameFile(iconData.public_id, `/category/icons/${existingCategory._id}`);
-        
-        // Update the category with the final public_id
-        updatedCategory.icon.public_id = `/category/icons/${existingCategory._id}`;
-        await updatedCategory.save();
-      } catch (cleanupError) {
-        console.warn('Failed to cleanup old image or rename new image:', cleanupError);
-        // This is non-critical - the update succeeded, just image management failed
-      }
-    }
-
     return successResponse(res, {
       message: "Category updated successfully",
       data: updatedCategory
     });
 
   } catch (dbError) {
-    // If category update fails, clean up the uploaded image
     if (iconData && iconData.public_id) {
       try {
         await destroyFile(iconData.public_id);
