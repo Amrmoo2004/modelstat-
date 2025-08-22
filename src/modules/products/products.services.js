@@ -237,3 +237,26 @@ export const deleteProduct = asynchandler(async (req, res, next) => {
 });
 
 
+export const  productsByCategory = asynchandler(async (req, res, next) => {
+  const categoryId = req.params.id || req.query.id;
+  
+  if (!categoryId) {
+    return next(new Error("Category ID is required", { cause: 400 }));
+  }
+  
+  const products = await productmodel.find({ "category._id": categoryId })
+    .populate('category', 'name_en name_ar');
+  
+  if (!products || products.length === 0) {
+    return next(new Error(`No products found for category ID '${categoryId}'`, { cause: 404 }));
+  }
+  
+  return successResponse(
+    res,
+    {
+      message: "Products retrieved successfully",
+      data: products
+    },
+    200
+  );
+});
