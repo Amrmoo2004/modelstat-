@@ -20,10 +20,20 @@
         type: Number,
         required: true
     },
-    image: {
-        type: String,
-        required: true
+    images: [{
+    secure_url: {
+      type: String,
     },
+    url: {
+      type: String,
+    },
+    public_id: {
+      type: String,
+    },
+    asset_id: {
+      type: String
+    }
+  }],
         sizes: [{
         type: String,
         required: false
@@ -43,14 +53,6 @@
         type: String,
         required: true
     },
-    postalCode: {
-        type: String,
-        required: true
-    },
-    country: {
-        type: String,
-        required: true
-    }
     }, { _id: false });
 
     // Payment Details Sub-Schema
@@ -91,7 +93,7 @@
     },
     paymentStatus: {
         type: String,
-        enum: ['Pending', 'Completed', 'Failed', 'Refunded'],
+        enum: ['Pending', 'paid', 'failed', 'refunded','completed'],
         default: 'Pending'
     },
     paymentDetails: paymentDetailsSchema,
@@ -99,6 +101,11 @@
         type: Boolean,
         default: false
     },
+    status: {
+    type: String,
+    enum: [ 'Processing', 'Shipped', 'Delivered', 'Cancelled','Completed'],
+    default: 'Processing'
+},
     finalizedAt: {
         type: Date
     }
@@ -116,7 +123,7 @@
 
     // Virtual for formatted shipping address
     checkoutSchema.virtual('formattedShippingAddress').get(function() {
-    return `${this.shippingAddress.address}, ${this.shippingAddress.city}, ${this.shippingAddress.postalCode}, ${this.shippingAddress.country}`;
+    return `${this.shippingAddress.address}, ${this.shippingAddress.city}`;
     });
 
     // Pre-save hook to calculate total price

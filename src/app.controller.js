@@ -8,6 +8,7 @@ import productcontroller from "./modules/products/products.controller.js"
 import cartcontroller from './modules/cart/cart.controller.js'
 import admincontroller from './modules/admin/admin.controller.js'
 import checkoutcontroller from './modules/checkout/checkout.controller.js';
+import ordercontroller from './modules/orders/order.controller.js';
 import * as dotenv from 'dotenv';
 import path from 'path';
 import cors from 'cors';
@@ -69,6 +70,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")))
    app.use('/user', usercontroller);
    app.use('/cart',cartcontroller  );
    app.use ('/user',usercontroller)
+   app.use('/orders',ordercontroller)
 app.use(express.urlencoded({ extended: true }));
 app.use ('/admin',admincontroller)
 app.use('/checkout', checkoutcontroller);
