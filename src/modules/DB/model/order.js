@@ -10,23 +10,12 @@
       type: String,
       required: true
     },
-    images: [{
-      secure_url: {
-        type: String,
-        required: true
-      },
-      url: {
-        type: String,
-        required: true
-      },
-      public_id: {
-        type: String,
-        required: true
-      },
-      asset_id: {
-        type: String
-      }
-    }],
+       images: [{ 
+    secure_url: String,
+    url: String,
+    public_id: String,
+    asset_id: String
+  }],
     price:{
       type: Number
     },
@@ -86,7 +75,7 @@
   },
   paymentstatus: {
       type: String,
-      enum: [ 'Processing', 'Shipped', 'Delivered', 'Cancelled','Completed'],
+      enum: ['Pending', 'paid', 'failed', 'refunded','completed'],
       default: 'Pending'  
   },
   status: {

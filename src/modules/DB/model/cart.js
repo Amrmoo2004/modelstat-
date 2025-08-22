@@ -2,39 +2,64 @@
 import mongoose from 'mongoose';
 import { stringify } from 'querystring';
 
-const cartSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  sessionId: String, // For guest users
-  items: [{
-    productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-    quantity: { 
-      type: Number, 
-      default: 1, 
-      min: 1,
-      required: true },
-    price: { type: Number, required: true }, // Snapshot of price at time of addition
-    name: String,
-    image: String,
+const cartItemSchema = new mongoose.Schema({
+  productId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'Product', 
+    required: true 
+  },
+  quantity: { 
+    type: Number, 
+    default: 1, 
+    min: 1,
+    required: true 
+  },
+  price: { 
+    type: Number, 
+    required: true 
+  },
+  name: String,
+  image: String,
+  sizes: [{  // ADD THIS
+    type: String
+  }],
+  colour: {  // ADD THIS
+    type: String
+  }
+}, { _id: false });  // Add _id: false for cleaner structure
 
-     
-    }
-  ],
+const cartSchema = new mongoose.Schema({
+  userId: { 
+    type: mongoose.Schema.Types.ObjectId, 
+    ref: 'User' 
+  },
+  sessionId: String,
+  items: [cartItemSchema],  // Use the defined schema
   coupon: {
     code: String,
-    discount: { type: Number, default: 0 }
+    discount: { 
+      type: Number, 
+      default: 0 
+    }
   },
-  total: { type: Number, default: 0 },
-  expiresAt: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } // 30 days expiry
-},{
-
+  total: { 
+    type: Number, 
+    default: 0 
+  },
+  expiresAt: { 
+    type: Date, 
+    default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) 
+  }
+}, {
+  timestamps: true,  // Add timestamps
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
+
+// Virtual for total quantity
 cartSchema.virtual('totalQuantity').get(function() {
   return this.items.reduce((total, item) => total + item.quantity, 0);
 });
-
-
 
 // Recalculate total before saving
 cartSchema.pre('save', function(next) {
@@ -42,4 +67,4 @@ cartSchema.pre('save', function(next) {
   next();
 });
 
-export const cartmodel = mongoose.model('Cart', cartSchema);    
+export const cartmodel = mongoose.model('Cart', cartSchema);

@@ -5,26 +5,38 @@ import mongoose from 'mongoose';
 import ordermodel from "../DB/model/order.js";
 import { cartmodel } from '../DB/model/cart.js';
 export const createCheckout = asynchandler(async (req, res, next) => {
-  const { checkoutItems, totalPrice, shippingAddress, paymentMethod } = req.body;
-  
-  // Validate required fields - use CORRECT field names
-  if (!checkoutItems || checkoutItems.length === 0) {
-    return next(new Error('Checkout items are required', { cause: 400 }));
-  }
-  
-  if (!shippingAddress || !paymentMethod || !totalPrice) {
-    return next(new Error('Missing required fields: shippingAddress, paymentMethod, or totalPrice', { cause: 400 }));
-  }
-
   try {
+    const cart = await cartmodel.findOne({ userId: req.user._id })
+      .populate('items.productId', 'name_ar name_en price images stock');
+    
+    if (!cart || cart.items.length === 0) {
+      return next(new Error('Cart is empty', { cause: 400 }));
+    }
+    
     const checkout = new Checkoutmodel({
       user: req.user._id,
-      checkoutItems,  // Note: camelCase 'checkoutItems' not 'checkoutitems'
-      totalPrice,     // Note: camelCase 'totalPrice' not 'totalprice'
-      shippingAddress,
-      paymentMethod,
+      checkoutItems: cart.items.map(item => {
+        const productName = item.productId.name_en || item.productId.name_ar || 'Unknown Product';
+        
+        return {
+          product: item.productId._id,
+          name: productName,
+          price: item.price,
+          quantity: item.quantity,
+          images: item.image ? [{
+            secure_url: item.image,
+            url: item.image,
+            public_id: `cart_${Date.now()}`
+          }] : item.productId.images || [],
+          sizes: item.sizes || [],
+          colour: item.colour || ''
+        };
+      }),
+      shippingAddress: req.body.shippingAddress,
+      paymentMethod: req.body.paymentMethod,
+      totalPrice: cart.total,
       isPaid: false,
-      paymentStatus: 'Pending'
+      paymentStatus: 'Pending' 
     });
     
     await checkout.save();
@@ -37,10 +49,9 @@ export const createCheckout = asynchandler(async (req, res, next) => {
     
   } catch (error) {
     console.error(error);
-    return next(new Error('Failed to create checkout', { cause: 500 }));
+    return next(new Error('Failed to create checkout: ' + error.message, { cause: 500 }));
   }
 });
-
 
 export const updateafterpayment = asynchandler(async (req, res, next) => {
   const { paymentStatus, paymentDetails, transactionId } = req.body;
@@ -112,23 +123,23 @@ export const confirmCheckout = asynchandler(async (req, res, next) => {
       return next(new Error('Checkout is not paid yet', { cause: 400 }));
     }
     
-    const finalorder = await ordermodel.create({
+      const finalorder = await ordermodel.create({
       user: checkout.user,
       orderitems: checkout.checkoutItems.map(item => ({
-        productid: [item.product], // Wrap in array as OrderModel expects array
+        productid: [item.product], 
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        images: item.images || [], // Directly use the images array from checkout
+        images: item.images, 
         sizes: item.sizes || []
       })),
       shippingAddress: checkout.shippingAddress,
       paymentMethod: checkout.paymentMethod,
-      paymentstatus: "Completed", 
-      tottalprice: checkout.totalPrice, 
+      paymentstatus: "completed",
+      tottalprice: checkout.totalPrice,
       ispaid: true,
       paidAt: checkout.paidAt,
-      isdelivered: false, 
+      isdelivered: false,
       status: 'Processing'
     });
     
@@ -136,7 +147,10 @@ export const confirmCheckout = asynchandler(async (req, res, next) => {
     checkout.finalizedAt = new Date();
     await checkout.save();
     
-    await cartmodel.deleteOne({ user: checkout.user });
+    await cartmodel.findOneAndUpdate(
+      { user: checkout.user },
+      { $set: { items: [] } }
+    );
     
     return res.status(200).json({
       success: true,

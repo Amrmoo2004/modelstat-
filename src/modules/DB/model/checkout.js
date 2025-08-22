@@ -20,19 +20,11 @@
         type: Number,
         required: true
     },
-    images: [{
-    secure_url: {
-      type: String,
-    },
-    url: {
-      type: String,
-    },
-    public_id: {
-      type: String,
-    },
-    asset_id: {
-      type: String
-    }
+    images: [{ 
+    secure_url: String,
+    url: String,
+    public_id: String,
+    asset_id: String
   }],
         sizes: [{
         type: String,
@@ -94,7 +86,7 @@
     paymentStatus: {
         type: String,
         enum: ['Pending', 'paid', 'failed', 'refunded','completed'],
-        default: 'Pending'
+          default: 'Pending'
     },
     paymentDetails: paymentDetailsSchema,
     isFinalized: {
