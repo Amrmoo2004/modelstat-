@@ -111,13 +111,13 @@ productSchema.index({ isActive: 1 });
 productSchema.index({ rating: 1 });
 
 
-productSchema.virtual('currentPrice').get(function() {
-  const activeOffer = this.getBestActiveOffer();
-  if (activeOffer) {
-    return this.calculateDiscountedPrice(activeOffer);
-  }
-  return this.price;
-});
+// productSchema.virtual('currentPrice').get(function() {
+//   const activeOffer = this.getBestActiveOffer();
+//   if (activeOffer) {
+//     return this.calculateDiscountedPrice(activeOffer);
+//   }
+//   return this.price;
+// });
 
 productSchema.virtual('discountPercentage').get(function() {
   const activeOffer = this.getBestActiveOffer();
