@@ -10,6 +10,7 @@ import * as products from "../products/products.services.js";
 import { productValidators } from "../products/products.validation.js"
 import*as user from "../user/user.services.js"
 import * as userValidators from "../user/user.validation.js";
+import * as order from "../orders/order.services.js";
 
 const router = Router();
 //admin_category
@@ -27,6 +28,10 @@ router.delete("/delete_products/:id",checkTokenRevoked,authUser,isAuthorized(["a
 router.post('/update_userrole/:id',user.update_userrole)
 router.get('/get_users/',checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),user.get_users)
 router.delete('/delete_user/:id',checkTokenRevoked,authUser,isAuthorized(["admin"||"Admin"||"system"]),user.deleteuser)
+
+//order_admin
+router.get('/stats', authUser,isAuthorized(["admin"||"Admin"||"system"]), checkTokenRevoked, order.getOrderStats);
+router.get('/all', authUser,isAuthorized(["admin"||"Admin"||"system"]), checkTokenRevoked, order.getUserCheckouts);
 
 
 export default router;

@@ -4,6 +4,7 @@ import { productmodel } from "../DB/model/product.js";
 import mongoose from 'mongoose';
 import ordermodel from "../DB/model/order.js";
 import { cartmodel } from '../DB/model/cart.js';
+
 export const createCheckout = asynchandler(async (req, res, next) => {
   try {
     const cart = await cartmodel.findOne({ userId: req.user._id })
@@ -15,6 +16,10 @@ export const createCheckout = asynchandler(async (req, res, next) => {
     
     const checkout = new Checkoutmodel({
       user: req.user._id,
+      paymentMethod: 'Paymob', 
+      paymentDetails: {
+        status: 'initiated'
+      },
       checkoutItems: cart.items.map(item => {
         const productName = item.productId.name_en || item.productId.name_ar || 'Unknown Product';
         
@@ -38,13 +43,14 @@ export const createCheckout = asynchandler(async (req, res, next) => {
       isPaid: false,
       paymentStatus: 'Pending' 
     });
-    
+
     await checkout.save();
-    
+
     return res.status(201).json({
       success: true,
       message: 'Checkout created successfully',
-      checkout: checkout
+      checkout: checkout,
+      paymentMethod: 'Paymob'
     });
     
   } catch (error) {

@@ -134,19 +134,16 @@ export const updateProduct = asynchandler(async (req, res, next) => {
                 return next(new Error('Product not found', { cause: 404 }));
             }
 
-            // Delete old images if they exist
             if (existingProduct.images?.length) {
                 await destroyFile(existingProduct.images.map(img => img.public_id));
             }
 
-            // Upload new images
             const images = await uploadFiles(
                 req.files, 
                 `products/category/${existingProduct.category._id}/${existingProduct._id}`
             );
 
 
-            // Update only images first
             await productmodel.findByIdAndUpdate(
                 id,
                 { 
@@ -161,7 +158,6 @@ export const updateProduct = asynchandler(async (req, res, next) => {
                 }
             );
 
-            // Clean up temp files
             req.files.forEach(file => {
                 if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
             });
