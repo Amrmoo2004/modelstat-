@@ -46,7 +46,7 @@ category: {
       _id: categoryExists._id,
       name_en: categoryExists.name_en,
       name_ar: categoryExists.name_ar
-    },    price: parseFloat(price),
+    },    Price: parseFloat(price),
     sizes: sizesArray,
         images: [], 
     cover: [],

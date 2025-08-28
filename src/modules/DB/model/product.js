@@ -1,8 +1,7 @@
-  import mongoose from "mongoose";
-  const Schema = mongoose.Schema;
-  
-  
-  const productSchema = new mongoose.Schema({
+import mongoose from "mongoose";
+const Schema = mongoose.Schema;
+
+const productSchema = new mongoose.Schema({
   name_en: {
     type: String,
     trim: true,
@@ -12,40 +11,19 @@
     type: String,
     trim: true,
     maxlength: [100, "Arabic name cannot exceed 100 characters"]
-  },
-  images: [{
-    secure_url: {
-      type: String,
-      required: true
-    },
-    url: {
-      type: String,
-    },
-    public_id: {
-      type: String,
-    },
-    asset_id: {
-      type: String
-    }
-  }],
-  sizes: [{
-    type: String,
-    required: false
-  }],
-  colors: [{
-    type: String,
-    required: false
-  }],
+  },  Price: { type: Number, min: 0 },
 
-  description_en: {
-    type: String,
-    trim: true
-  },
-  description_ar: {  // Fixed - changed from ObjectId to String
-    type: String,
-    trim: true
-  },
-    category: {
+  images: [{
+    secure_url: { type: String, required: true },
+    url: { type: String },
+    public_id: { type: String },
+    asset_id: { type: String }
+  }],
+  sizes: [{ type: String, required: false }],
+  colors: [{ type: String, required: false }],
+  description_en: { type: String, trim: true },
+  description_ar: { type: String, trim: true },
+  category: {
     _id: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
@@ -61,25 +39,9 @@
     name_en: { type: String, required: true },
     name_ar: { type: String, required: true }
   },
-  basePrice: { 
-    type: Number,
-    required: true,
-    min: 0
-  },
-  currentPrice: { 
-    type: Number,
-    required: true,
-    min: 0
-  },
-    Price: {
-    type: Number,
-    min: 0
-  },
-  rating: {
-    type: Number,
-    default: 0
-  },
-offers: [{
+      discountedPrice: { type: Number, default: 0 },
+  rating: { type: Number, default: 0 },
+  offers: [{
     name_en: String,
     name_ar: String,
     discountType: { type: String, enum: ['percentage', 'fixed', 'bogo'] },
@@ -90,35 +52,40 @@ offers: [{
     usageLimit: { type: Number, default: 0 },
     usedCount: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
-    createdAt: { type: Date, default: Date.now }
-  }],  comments: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'user'
-  }],
+    createdAt: { type: Date, default: Date.now },
 
+  }],
+  comments: [{ type: mongoose.Schema.Types.ObjectId, ref: 'user' }],
+  isActive: { type: Boolean, default: true },
+  isBestSeller: { type: Boolean, default: false },
+  bestSellerRank: { type: Number, default: 0 },
+  salesCount: { type: Number, default: 0 },
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
   toObject: { virtuals: true }
 });
 
-
+// Indexes
 productSchema.index({ name_en: 'text', name_ar: 'text', description_en: 'text', description_ar: 'text' });
-productSchema.index({ category: 1 });
-productSchema.index({ price: 1 });
+productSchema.index({ 'category._id': 1 });
+productSchema.index({ Price: 1 });
 productSchema.index({ isFeatured: 1 });
 productSchema.index({ isActive: 1 });
 productSchema.index({ rating: 1 });
+productSchema.index({ 'offers.endDate': 1 });
+productSchema.index({ 'offers.isActive': 1 });
 
+// Virtual for current price
+productSchema.virtual('currentPrice').get(function() {
+  const activeOffer = this.getBestActiveOffer();
+  if (activeOffer) {
+    return this.calculateDiscountedPrice(activeOffer);
+  }
+  return this.Price;
+});
 
-// productSchema.virtual('currentPrice').get(function() {
-//   const activeOffer = this.getBestActiveOffer();
-//   if (activeOffer) {
-//     return this.calculateDiscountedPrice(activeOffer);
-//   }
-//   return this.price;
-// });
-
+// Virtual for discount percentage
 productSchema.virtual('discountPercentage').get(function() {
   const activeOffer = this.getBestActiveOffer();
   if (activeOffer && activeOffer.discountType === 'percentage') {
@@ -127,117 +94,87 @@ productSchema.virtual('discountPercentage').get(function() {
   return 0;
 });
 
+// Method to get the best active offer
 productSchema.methods.getBestActiveOffer = function() {
   const now = new Date();
   const activeOffers = this.offers.filter(offer => 
     offer.isActive && 
     offer.startDate <= now && 
-    offer.endDate >= now
+    (!offer.endDate || offer.endDate >= now)
   );
   
   if (activeOffers.length === 0) return null;
   
+  // Return the offer with highest discount value
   return activeOffers.sort((a, b) => {
-    const aValue = a.discountType === 'percentage' ? a.discountValue : (a.discountValue / this.price) * 100;
-    const bValue = b.discountType === 'percentage' ? b.discountValue : (b.discountValue / this.price) * 100;
+    const aValue = a.discountType === 'percentage' ? a.discountValue : (a.discountValue / this.Price) * 100;
+    const bValue = b.discountType === 'percentage' ? b.discountValue : (b.discountValue / this.Price) * 100;
     return bValue - aValue;
   })[0];
 };
 
+// Method to calculate discounted price
 productSchema.methods.calculateDiscountedPrice = function(offer) {
-  if (!offer || !offer.isActive) return this.price;
+  if (!offer || !offer.isActive) return this.Price;
   
   const now = new Date();
-  if (now < offer.startDate || now > offer.endDate) return this.price;
+  if (now < offer.startDate || (offer.endDate && now > offer.endDate)) return this.Price;
   
-  let discountedPrice = this.price;
+  let discountedPrice = this.Price;
   
   switch (offer.discountType) {
     case 'percentage':
-      discountedPrice = this.price * (1 - offer.discountValue / 100);
+      discountedPrice = this.Price * (1 - offer.discountValue / 100);
       break;
     case 'fixed':
-      discountedPrice = Math.max(0, this.price - offer.discountValue);
+      discountedPrice = Math.max(0, this.Price - offer.discountValue);
       break;
-    case 'free_shipping':
+    case 'bogo':
+      // Buy One Get One - you might need to implement this differently
       break;
   }
   
   return Math.round(discountedPrice * 100) / 100;
 };
 
+// Check if product has active offers
 productSchema.methods.hasActiveOffers = function() {
   const now = new Date();
   return this.offers.some(offer => 
     offer.isActive && 
     offer.startDate <= now && 
-    offer.endDate >= now
+    (!offer.endDate || offer.endDate >= now)
   );
 };
 
-productSchema.statics.findBestSellers = function(limit = 10, category = null) {
-  const query = { 
-    isBestSeller: true, 
-    isActive: true 
-  };
-  
-  if (category) {
-    query.category = category;
-  }
-  
-  return this.find(query)
-    .sort({ bestSellerRank: 1, salesCount: -1 })
-    .limit(limit)
-    .select('name price originalPrice images category salesCount rating offers');
-};
-
+// Static method to find products with offers
 productSchema.statics.findProductsWithOffers = function(limit = 10, category = null) {
   const now = new Date();
   const query = { 
     isActive: true,
     'offers.isActive': true,
     'offers.startDate': { $lte: now },
-    'offers.endDate': { $gte: now }
+    $or: [
+      { 'offers.endDate': { $gte: now } },
+      { 'offers.endDate': null }
+    ]
   };
   
   if (category) {
-    query.category = category;
+    query['category._id'] = category;
   }
   
   return this.find(query)
     .sort({ 'offers.discountValue': -1, salesCount: -1 })
     .limit(limit)
-    .select('name price originalPrice images category salesCount rating offers');
+    .select('name_en name_ar Price images category salesCount rating offers');
 };
 
-productSchema.statics.updateBestSellers = async function() {
-  const categories = await this.distinct('category');
-  
-  for (const category of categories) {
-    await this.updateMany(
-      { category, isBestSeller: true },
-      { isBestSeller: false, bestSellerRank: 0 }
-    );
-    
-    const topProducts = await this.find({ category, isActive: true })
-      .sort({ salesCount: -1 })
-      .limit(10)
-      .select('_id');
-    
-    for (let i = 0; i < topProducts.length; i++) {
-      await this.findByIdAndUpdate(topProducts[i]._id, {
-        isBestSeller: true,
-        bestSellerRank: i + 1
-      });
-    }
-  }
-};
-
+// Pre-save middleware
 productSchema.pre('save', function(next) {
-  this.updatedAt = Date.now();
-  
+  // Set original price if not set
   if (!this.originalPrice) {
-    this.originalPrice = this.price;
+    this.originalPrice = this.Price;
   }
   
   next();

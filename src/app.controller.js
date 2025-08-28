@@ -10,6 +10,7 @@ import admincontroller from './modules/admin/admin.controller.js'
 import checkoutcontroller from './modules/checkout/checkout.controller.js';
 import ordercontroller from './modules/orders/order.controller.js';
 import paymentcontroller from './modules/payment/payment.controller.js';
+import offercontroller from './modules/offers/offers.controller.js';
 import * as dotenv from 'dotenv';
 import path from 'path';
 import cors from 'cors';
@@ -76,6 +77,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use ('/admin',admincontroller)
 app.use('/checkout', checkoutcontroller);
 app.use('/payment', paymentcontroller);
+app.use('/offers',offercontroller)
 app.use (globalErrorHandler);
 
   return app.listen(port, () => {
