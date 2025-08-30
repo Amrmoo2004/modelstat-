@@ -1,4 +1,4 @@
-// config/paymob.js
+// config/paymob.js`
 export const paymobConfig = {
   apiKey: process.env.PAYMOB_API_KEY,
   integrationId: process.env.PAYMOB_INTEGRATION_ID,

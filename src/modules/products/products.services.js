@@ -3,6 +3,7 @@ import { categorymodel } from "../DB/model/category.js";
 import {asynchandler } from "../utilities/response/response.js";
 import {successResponse } from "../utilities/response/response.js";
     import { destroyFile, uploadFiles } from '../utilities/cloudinary/cloudinary.js';
+    import { ordermodel } from "../DB/model/order.js";
 import fs from 'fs';
 
 export const createproduct = asynchandler(async (req, res, next) => {
@@ -255,4 +256,153 @@ export const  productsByCategory = asynchandler(async (req, res, next) => {
     },
     200
   );
+});
+export const bestSeller = asynchandler(async (req, res, next) => {
+  try {
+    const { timeframe = 'alltime', limit = '20' } = req.query;
+    const limitNum = parseInt(limit, 10);
+
+    if (isNaN(limitNum) || limitNum < 1) {
+      return res.status(400).json({ 
+        error: "Invalid 'limit' parameter. Must be a positive number." 
+      });
+    }
+
+    const validTimeframes = ['day', 'week', 'month', 'alltime'];
+    if (!validTimeframes.includes(timeframe)) {
+      return res.status(400).json({
+        error: "Invalid 'timeframe' parameter. Must be 'day', 'week', 'month', or 'alltime'."
+      });
+    }
+
+    let dateFilter = {};
+    const now = new Date();
+
+    switch (timeframe) {
+      case "day":
+        const oneDayAgo = new Date(now);
+        oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+        dateFilter = { $gte: oneDayAgo };
+        break;
+      case "week":
+        const oneWeekAgo = new Date(now);
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        dateFilter = { $gte: oneWeekAgo };
+        break;
+      case "month":
+        const oneMonthAgo = new Date(now);
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        dateFilter = { $gte: oneMonthAgo };
+        break;
+      case "alltime":
+        break;
+    }
+
+   const pipeline = [
+      {
+        $match: {
+          status: { $ne: "Cancelled" },
+          ispaid: true, 
+          paymentstatus: "Completed",
+          ...(timeframe !== "alltime" && { createdAt: dateFilter })
+        }
+      },
+      { $unwind: "$orderitems" },
+      
+      // FIX: Extract the single productid from the array
+      {
+        $addFields: {
+          "singleProductId": { $arrayElemAt: ["$orderitems.productid", 0] }
+        }
+      },
+      
+      {
+        $group: {
+          _id: "$singleProductId", // Use the extracted single ID
+          totalQuantitySold: { $sum: "$orderitems.quantity" },
+          totalRevenue: { $sum: { $multiply: ["$orderitems.quantity", "$orderitems.price"] } },
+          // Capture product details from the order itself
+          productName: { $first: "$orderitems.name" },
+          productPrice: { $first: "$orderitems.price" },
+          productImages: { $first: "$orderitems.images" }
+        }
+      },
+      { $sort: { totalQuantitySold: -1 } },
+      { $limit: limitNum },
+      
+      // Try to lookup product details
+      {
+        $lookup: {
+          from: "products",
+          localField: "_id",
+          foreignField: "_id",
+          as: "productDetails"
+        }
+      },
+      
+      {
+        $unwind: {
+          path: "$productDetails",
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      
+      {
+        $project: {
+          // Sales metrics
+          totalQuantitySold: 1,
+          totalRevenue: 1,
+          
+          // Use product details from lookup if available, otherwise from order
+          name_en: { 
+            $ifNull: [
+              "$productDetails.name_en", 
+              "$productName" // Fallback to order item name
+            ]
+          },
+          name_ar: { 
+            $ifNull: [
+              "$productDetails.name_ar", 
+              "$productName" // Fallback to order item name
+            ]
+          },
+          description_en: { $ifNull: ["$productDetails.description_en", ""] },
+          description_ar: { $ifNull: ["$productDetails.description_ar", ""] },
+          price: { $ifNull: ["$productDetails.price", "$productPrice"] },
+          images: { $ifNull: ["$productDetails.images", "$productImages"] },
+          category: { $ifNull: ["$productDetails.category", ""] },
+          sizes: { $ifNull: ["$productDetails.sizes", []] },
+          colors: { $ifNull: ["$productDetails.colors", []] },
+          inStock: { $ifNull: ["$productDetails.inStock", true] },
+          rating: { $ifNull: ["$productDetails.rating", 0] },
+          reviews: { $ifNull: ["$productDetails.reviews", []] },
+          tags: { $ifNull: ["$productDetails.tags", []] },
+          slug: { $ifNull: ["$productDetails.slug", ""] },
+          sku: { $ifNull: ["$productDetails.sku", ""] },
+          brand: { $ifNull: ["$productDetails.brand", ""] },
+          specifications: { $ifNull: ["$productDetails.specifications", {}] },
+          
+          // IDs
+          _id: { $ifNull: ["$productDetails._id", "$_id"] },
+          productId: "$_id"
+        }
+      }
+    ];
+
+    const bestSellers = await ordermodel.aggregate(pipeline);
+
+    res.json({
+      success: true,
+      timeframe,
+      count: bestSellers.length,
+      data: bestSellers
+    });
+
+  } catch (error) {
+    console.error("Best sellers error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Internal server error"
+    });
+  }
 });

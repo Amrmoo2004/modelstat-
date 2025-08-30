@@ -46,7 +46,7 @@ export const addToCart = asynchandler(async (req, res) => {
     cart.items.push({
       productId,
       quantity,
-      price: product.price,
+      price: product.Price,
       name: product.name,
       image: product.images[0]?.secure_url,
     });

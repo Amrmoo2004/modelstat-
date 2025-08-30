@@ -85,7 +85,6 @@ productSchema.virtual('currentPrice').get(function() {
   return this.Price;
 });
 
-// Virtual for discount percentage
 productSchema.virtual('discountPercentage').get(function() {
   const activeOffer = this.getBestActiveOffer();
   if (activeOffer && activeOffer.discountType === 'percentage') {
@@ -94,7 +93,6 @@ productSchema.virtual('discountPercentage').get(function() {
   return 0;
 });
 
-// Method to get the best active offer
 productSchema.methods.getBestActiveOffer = function() {
   const now = new Date();
   const activeOffers = this.offers.filter(offer => 
@@ -105,7 +103,6 @@ productSchema.methods.getBestActiveOffer = function() {
   
   if (activeOffers.length === 0) return null;
   
-  // Return the offer with highest discount value
   return activeOffers.sort((a, b) => {
     const aValue = a.discountType === 'percentage' ? a.discountValue : (a.discountValue / this.Price) * 100;
     const bValue = b.discountType === 'percentage' ? b.discountValue : (b.discountValue / this.Price) * 100;
@@ -113,7 +110,6 @@ productSchema.methods.getBestActiveOffer = function() {
   })[0];
 };
 
-// Method to calculate discounted price
 productSchema.methods.calculateDiscountedPrice = function(offer) {
   if (!offer || !offer.isActive) return this.Price;
   
@@ -130,14 +126,12 @@ productSchema.methods.calculateDiscountedPrice = function(offer) {
       discountedPrice = Math.max(0, this.Price - offer.discountValue);
       break;
     case 'bogo':
-      // Buy One Get One - you might need to implement this differently
       break;
   }
   
   return Math.round(discountedPrice * 100) / 100;
 };
 
-// Check if product has active offers
 productSchema.methods.hasActiveOffers = function() {
   const now = new Date();
   return this.offers.some(offer => 
@@ -147,7 +141,6 @@ productSchema.methods.hasActiveOffers = function() {
   );
 };
 
-// Static method to find products with offers
 productSchema.statics.findProductsWithOffers = function(limit = 10, category = null) {
   const now = new Date();
   const query = { 
@@ -170,9 +163,7 @@ productSchema.statics.findProductsWithOffers = function(limit = 10, category = n
     .select('name_en name_ar Price images category salesCount rating offers');
 };
 
-// Pre-save middleware
 productSchema.pre('save', function(next) {
-  // Set original price if not set
   if (!this.originalPrice) {
     this.originalPrice = this.Price;
   }
